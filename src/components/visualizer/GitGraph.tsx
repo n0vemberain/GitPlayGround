@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitState, Commit } from '../../types/git';
-import { GitCommit, Tag as TagIcon, X, Calendar, User, FileText, CornerDownRight } from 'lucide-react';
+import { GitCommit, Tag as TagIcon, X, Calendar, User, FileText, CornerDownRight, FolderGit2 } from 'lucide-react';
 
 interface GitGraphProps {
   gitState: GitState;
@@ -67,9 +67,93 @@ export const GitGraph: React.FC<GitGraphProps> = ({ gitState }) => {
         </div>
       </div>
 
-      {/* SVG Canvas */}
-      <div className="flex-1 overflow-auto p-4 custom-scrollbar">
-        <svg width={svgWidth} height={svgHeight} className="overflow-visible min-w-full">
+      {/* SVG Canvas or Zero-Commit Repository Blueprint */}
+      <div className="flex-1 overflow-auto p-4 custom-scrollbar flex items-center justify-center">
+        {commitList.length === 0 ? (
+          <div className="w-full max-w-2xl py-6 px-4 flex flex-col items-center text-center">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.4 }}
+              className="w-full bg-gh-canvas border border-gh-border rounded-2xl p-6 shadow-2xl relative overflow-hidden"
+            >
+              {/* Background accent glow */}
+              <div className="absolute -top-12 -right-12 w-48 h-48 bg-gh-accent/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex items-center justify-center space-x-2 text-gh-accent mb-3">
+                <FolderGit2 className="w-7 h-7" />
+                <h3 className="text-base font-bold text-gh-text">Local Repository Architecture</h3>
+              </div>
+
+              <p className="text-xs text-gh-text-muted mb-6 max-w-md mx-auto">
+                No commit snapshots created yet. Git has initialized your project database and is waiting for your first commit!
+              </p>
+
+              {/* 3 Pillars of Git Blueprint */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+                {/* 1. Global Identity */}
+                <div className={`p-3.5 rounded-xl border ${
+                  gitState.config['user.name'] && gitState.config['user.email']
+                    ? 'bg-emerald-500/10 border-emerald-500/40'
+                    : 'bg-gh-canvas-subtle border-gh-border'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-mono text-gh-text-muted flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-gh-accent" /> Author Identity
+                    </span>
+                    {gitState.config['user.name'] && gitState.config['user.email'] ? (
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-1.5 py-0.5 rounded">CONFIGURED</span>
+                    ) : (
+                      <span className="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded">REQUIRED</span>
+                    )}
+                  </div>
+                  <div className="font-mono text-xs text-gh-text space-y-1">
+                    <div className="truncate text-gh-accent font-semibold">
+                      {gitState.config['user.name'] || 'Name not configured'}
+                    </div>
+                    <div className="truncate text-gh-text-muted text-[11px]">
+                      {gitState.config['user.email'] || 'Email not configured'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. .git Internals */}
+                <div className="p-3.5 rounded-xl bg-gh-canvas-subtle border border-gh-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-mono text-gh-text-muted flex items-center gap-1">
+                      <FileText className="w-3.5 h-3.5 text-purple-400" /> .git/ Metadata
+                    </span>
+                    <span className="text-[10px] bg-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded">INITIALIZED</span>
+                  </div>
+                  <div className="font-mono text-xs text-gh-text space-y-1">
+                    <div className="text-purple-300">
+                      HEAD ➔ refs/heads/{gitState.HEAD.type === 'branch' ? gitState.HEAD.target : 'main'}
+                    </div>
+                    <div className="text-[11px] text-gh-text-muted">
+                      objects/ (0 snapshots)
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Next Action */}
+                <div className="p-3.5 rounded-xl bg-gh-accent/10 border border-gh-accent/30 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[11px] font-mono text-gh-accent font-bold flex items-center gap-1 mb-1">
+                      <GitCommit className="w-3.5 h-3.5" /> First Snapshot
+                    </span>
+                    <p className="text-[11px] text-gh-text-muted leading-tight">
+                      Stage files with <code className="text-gh-accent font-mono font-semibold">git add .</code> then commit.
+                    </p>
+                  </div>
+                  <div className="mt-2 text-[10px] font-mono bg-gh-canvas px-2 py-1 rounded text-emerald-400 border border-gh-border truncate">
+                    git commit -m &quot;initial&quot;
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        ) : (
+          <svg width={svgWidth} height={svgHeight} className="overflow-visible min-w-full">
           <defs>
             <marker
               id="arrow"
@@ -223,6 +307,7 @@ export const GitGraph: React.FC<GitGraphProps> = ({ gitState }) => {
             );
           })}
         </svg>
+        )}
       </div>
 
       {/* Commit Detail Modal */}

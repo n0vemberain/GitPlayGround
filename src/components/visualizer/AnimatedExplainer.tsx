@@ -36,7 +36,9 @@ import {
   Lock,
   Plus,
   Minus,
-  Check
+  Check,
+  Zap,
+  Gauge
 } from 'lucide-react';
 import { COMMAND_ANIMATIONS, CommandAnimation } from '../../data/commandAnimations';
 
@@ -51,23 +53,23 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
   currentCommandHint = '',
   language
 }) => {
-  // Determine the active animation data
+  // Determine active animation data
   const findExplainer = (): CommandAnimation => {
     if (lessonId && COMMAND_ANIMATIONS[lessonId]) {
       return COMMAND_ANIMATIONS[lessonId];
     }
-    // Fallback search by command hint
     const hint = currentCommandHint.trim().toLowerCase();
     const found = Object.values(COMMAND_ANIMATIONS).find(anim => 
       hint.includes(anim.command.toLowerCase().split(' ')[1] || '') ||
       anim.command.toLowerCase().includes(hint)
     );
-    return found || COMMAND_ANIMATIONS['2-4']; // fallback to commit-msg
+    return found || COMMAND_ANIMATIONS['2-4'];
   };
 
   const [activeExplainer, setActiveExplainer] = useState<CommandAnimation>(findExplainer());
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [speed, setSpeed] = useState<0.5 | 1 | 2>(1);
 
   // Sync when lessonId or hint changes
   useEffect(() => {
@@ -80,14 +82,16 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
   const totalSteps = activeExplainer.steps.length;
   const currentStep = activeExplainer.steps[currentStepIndex] || activeExplainer.steps[0];
 
-  // Auto-advance loop when playing
+  // Auto-play timer adjusted for selected speed
   useEffect(() => {
     if (!isPlaying) return;
+    const baseDuration = 3800;
+    const stepDuration = baseDuration / speed;
     const timer = setInterval(() => {
       setCurrentStepIndex(prev => (prev + 1) % totalSteps);
-    }, 3400);
+    }, stepDuration);
     return () => clearInterval(timer);
-  }, [isPlaying, totalSteps, currentStepIndex]);
+  }, [isPlaying, totalSteps, currentStepIndex, speed]);
 
   const handleNext = () => {
     setCurrentStepIndex(prev => (prev + 1) % totalSteps);
@@ -97,36 +101,58 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
     setCurrentStepIndex(prev => (prev - 1 + totalSteps) % totalSteps);
   };
 
+  // Step names helper
+  const getStepBadge = (idx: number) => {
+    if (language === 'bn') {
+      if (idx === 0) return 'ধাপ ১: প্রাক-অবস্থা';
+      if (idx === 1) return 'ধাপ ২: অভ্যন্তরীণ একশন';
+      return 'ধাপ ৩: চূড়ান্ত ফলাফল';
+    }
+    if (idx === 0) return 'Step 1: Initial State';
+    if (idx === 1) return 'Step 2: Mechanism in Action';
+    return 'Step 3: Resulting Snapshot';
+  };
+
   return (
-    <div className="flex flex-col h-full bg-gh-canvas-inset border border-gh-border rounded-xl overflow-hidden select-none shadow-xl">
+    <div className="flex flex-col h-full min-h-[380px] bg-gh-canvas-inset border border-gh-border rounded-xl overflow-hidden select-none shadow-2xl">
       {/* Top Header Bar & Video Controls */}
-      <div className="h-11 border-b border-gh-border px-3.5 bg-gh-canvas-subtle flex items-center justify-between text-xs">
+      <div className="h-11 border-b border-gh-border px-3.5 bg-gh-canvas-subtle flex items-center justify-between text-xs shrink-0">
         <div className="flex items-center space-x-2.5 overflow-hidden">
-          <span className="relative flex h-2.5 w-2.5">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>
           <span className="font-semibold text-gh-text text-xs whitespace-nowrap">
             {language === 'bn' ? activeExplainer.titleBn : activeExplainer.titleEn}
           </span>
-          <span className="font-mono text-[10px] bg-gh-accent/15 text-gh-accent px-2 py-0.5 rounded border border-gh-accent/25 truncate max-w-[200px]">
+          <span className="font-mono text-[10px] bg-gh-accent/15 text-gh-accent px-2 py-0.5 rounded border border-gh-accent/25 truncate max-w-[200px] hidden sm:inline">
             {activeExplainer.command}
           </span>
         </div>
 
         {/* Video Player Controls */}
         <div className="flex items-center space-x-1.5 shrink-0">
+          {/* Speed Toggle */}
+          <button
+            onClick={() => setSpeed(s => s === 1 ? 0.5 : s === 0.5 ? 2 : 1)}
+            className="flex items-center space-x-1 px-1.5 py-0.5 rounded bg-gh-canvas hover:bg-gh-border text-gh-text-muted hover:text-white border border-gh-border font-mono text-[10px] transition mr-1"
+            title="Playback Speed"
+          >
+            <Gauge className="w-3 h-3 text-gh-accent" />
+            <span>{speed}x</span>
+          </button>
+
           <button
             onClick={handlePrev}
-            className="p-1 hover:bg-gh-border/50 text-gh-text-muted hover:text-gh-text rounded transition"
+            className="p-1 hover:bg-gh-border text-gh-text-muted hover:text-gh-text rounded transition"
             title="Previous Step"
           >
-            <ChevronLeft className="w-3.5 h-3.5" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
 
           <button
             onClick={() => setIsPlaying(!isPlaying)}
-            className="flex items-center space-x-1 px-2.5 py-0.5 rounded bg-gh-accent/20 hover:bg-gh-accent/30 text-gh-accent font-semibold transition"
+            className="flex items-center space-x-1 px-2.5 py-0.5 rounded bg-gh-accent/20 hover:bg-gh-accent/30 text-gh-accent font-semibold transition border border-gh-accent/30"
           >
             {isPlaying ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
             <span className="text-[10px]">{isPlaying ? 'Pause' : 'Play'}</span>
@@ -134,91 +160,124 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
 
           <button
             onClick={handleNext}
-            className="p-1 hover:bg-gh-border/50 text-gh-text-muted hover:text-gh-text rounded transition"
+            className="p-1 hover:bg-gh-border text-gh-text-muted hover:text-gh-text rounded transition"
             title="Next Step"
           >
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
 
           <button
             onClick={() => { setCurrentStepIndex(0); setIsPlaying(true); }}
-            className="p-1 hover:bg-gh-border/50 text-gh-text-muted hover:text-gh-text rounded transition ml-1"
+            className="p-1 hover:bg-gh-border text-gh-text-muted hover:text-gh-text rounded transition ml-1"
             title="Replay from Step 1"
           >
-            <RotateCcw className="w-3 h-3" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
+      {/* Step Tabs Scrubber Bar */}
+      <div className="bg-gh-canvas border-b border-gh-border/60 px-3 py-1.5 flex items-center justify-between shrink-0">
+        <div className="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar">
+          {activeExplainer.steps.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => { setCurrentStepIndex(idx); setIsPlaying(false); }}
+              className={`px-2.5 py-1 rounded text-[11px] font-medium transition flex items-center space-x-1.5 whitespace-nowrap ${
+                idx === currentStepIndex
+                  ? 'bg-gh-accent text-white font-bold shadow-sm'
+                  : 'bg-gh-canvas-subtle text-gh-text-muted hover:text-gh-text border border-gh-border/60'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${idx === currentStepIndex ? 'bg-white' : 'bg-gh-text-subtle'}`} />
+              <span>{getStepBadge(idx)}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="text-[10px] font-mono text-gh-text-subtle hidden sm:inline">
+          {currentStepIndex + 1} / {totalSteps}
+        </div>
+      </div>
+
       {/* Main Animation Stage */}
-      <div className="flex-1 relative flex items-center justify-center p-6 overflow-hidden bg-gradient-to-b from-gh-canvas-inset to-gh-canvas">
+      <div className="flex-1 relative flex items-center justify-center p-6 overflow-hidden bg-gradient-to-b from-gh-canvas-inset via-gh-canvas to-gh-canvas">
         {/* Subtle Architectural Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#30363d12_1px,transparent_1px),linear-gradient(to_bottom,#30363d12_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#30363d15_1px,transparent_1px),linear-gradient(to_bottom,#30363d15_1px,transparent_1px)] bg-[size:28px_28px] pointer-events-none" />
 
         <AnimatePresence mode="wait">
           <motion.div
             key={`${activeExplainer.id}-${currentStepIndex}`}
-            initial={{ opacity: 0, scale: 0.94, y: 8 }}
+            initial={{ opacity: 0, scale: 0.94, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 1.04, y: -8 }}
+            exit={{ opacity: 0, scale: 1.05, y: -10 }}
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="w-full h-full flex flex-col items-center justify-center relative z-10"
           >
             {/* 1-1: config-name */}
             {activeExplainer.visualScene === 'config-name' && (
-              <div className="flex flex-col items-center space-y-4">
-                <div className="w-84 bg-gh-canvas border border-gh-border rounded-xl p-4 shadow-2xl relative">
+              <div className="flex flex-col items-center space-y-4 max-w-md w-full">
+                <div className="w-full bg-gh-canvas border border-gh-border rounded-xl p-4 shadow-2xl relative">
                   <div className="flex items-center justify-between border-b border-gh-border pb-2 mb-3">
-                    <span className="font-mono text-[11px] text-gh-text-muted flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-gh-accent" /> ~/.gitconfig
+                    <span className="font-mono text-xs text-gh-text-muted flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-gh-accent" /> ~/.gitconfig
                     </span>
-                    <span className="text-[10px] bg-gh-accent/15 text-gh-accent px-1.5 py-0.5 rounded font-mono">GLOBAL</span>
+                    <span className="text-[10px] bg-gh-accent/15 text-gh-accent px-2 py-0.5 rounded font-mono font-bold">GLOBAL INI FILE</span>
                   </div>
-                  <div className="font-mono text-xs space-y-1">
+                  <div className="font-mono text-xs space-y-2">
                     <div className="text-purple-400">[user]</div>
                     <motion.div 
-                      initial={{ opacity: 0, x: -10 }}
+                      initial={{ opacity: 0, x: -12 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-emerald-400 pl-4 bg-emerald-500/10 py-1 rounded border border-emerald-500/30 flex items-center justify-between"
+                      transition={{ delay: 0.15 }}
+                      className="text-emerald-400 pl-4 bg-emerald-500/10 py-1.5 px-2 rounded border border-emerald-500/30 flex items-center justify-between"
                     >
                       <span>name = &quot;Your Name&quot;</span>
-                      <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="mr-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <motion.span animate={{ scale: [1, 1.25, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}>
+                        <Check className="w-4 h-4 text-emerald-400" />
                       </motion.span>
                     </motion.div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gh-text-muted font-mono bg-gh-canvas-subtle px-3 py-1.5 rounded-full border border-gh-border">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> All future commits signed with this author
+                <div className="flex items-center gap-2 text-xs text-emerald-300 font-mono bg-emerald-500/10 px-3.5 py-1.5 rounded-full border border-emerald-500/30">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Embedded permanently into every future commit object
                 </div>
               </div>
             )}
 
             {/* 1-2: config-email */}
             {activeExplainer.visualScene === 'config-email' && (
-              <div className="flex flex-col items-center space-y-4">
-                <div className="flex items-center gap-6">
+              <div className="flex flex-col items-center space-y-4 max-w-lg w-full">
+                <div className="flex items-center gap-4 w-full justify-center">
                   <div className="w-48 bg-gh-canvas border border-gh-border rounded-xl p-3 shadow-xl">
-                    <div className="flex items-center gap-1.5 text-[11px] text-gh-text-muted mb-2 font-mono">
-                      <Mail className="w-3.5 h-3.5 text-purple-400" /> Git Config
+                    <div className="flex items-center gap-1.5 text-xs text-gh-text-muted mb-2 font-mono">
+                      <Mail className="w-3.5 h-3.5 text-purple-400" /> Local ~/.gitconfig
                     </div>
-                    <div className="font-mono text-[11px] text-purple-300">email = user@example.com</div>
+                    <div className="font-mono text-xs text-purple-300 bg-purple-500/10 p-1.5 rounded border border-purple-500/20">
+                      email = user@example.com
+                    </div>
                   </div>
-                  <motion.div animate={{ x: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 1.2 }}>
-                    <ArrowRight className="w-5 h-5 text-gh-accent" />
+                  <motion.div animate={{ x: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 1 }}>
+                    <ArrowRight className="w-6 h-6 text-emerald-400" />
                   </motion.div>
-                  <div className="w-48 bg-gh-canvas border border-gh-border rounded-xl p-3 shadow-xl flex flex-col items-center">
-                    <div className="text-[11px] text-gh-text-muted mb-1 font-mono">GitHub Profile</div>
+                  <div className="w-52 bg-gh-canvas border border-emerald-500/40 rounded-xl p-3 shadow-xl flex flex-col items-center">
+                    <div className="text-xs text-emerald-400 mb-1.5 font-mono font-bold flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" /> GitHub Profile
+                    </div>
                     {/* Simulated Contribution Squares */}
-                    <div className="grid grid-cols-4 gap-1 p-1 bg-gh-canvas-inset rounded border border-gh-border">
+                    <div className="grid grid-cols-4 gap-1 p-1.5 bg-gh-canvas-inset rounded border border-gh-border">
                       {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                        <div key={i} className="w-3 h-3 rounded-xs bg-emerald-500" />
+                        <motion.div 
+                          key={i} 
+                          animate={{ opacity: [0.6, 1, 0.6] }} 
+                          transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.1 }}
+                          className="w-3.5 h-3.5 rounded-xs bg-emerald-500" 
+                        />
                       ))}
                     </div>
                   </div>
                 </div>
-                <span className="text-xs text-emerald-400 font-mono">Contribution squares activated!</span>
+                <span className="text-xs text-emerald-400 font-mono">Email matches your account ➔ Green contribution graph activated!</span>
               </div>
             )}
 
@@ -226,22 +285,25 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {activeExplainer.visualScene === 'init-repo' && (
               <div className="flex flex-col items-center space-y-4">
                 <div className="relative flex items-center justify-center">
-                  <div className="w-48 h-32 rounded-2xl border-2 border-dashed border-gh-border flex flex-col items-center justify-center p-3">
-                    <FolderGit2 className="w-8 h-8 text-gh-text-muted mb-1" />
-                    <span className="font-mono text-xs text-gh-text-muted">project_folder/</span>
+                  <div className="w-56 h-36 rounded-2xl border-2 border-dashed border-gh-border flex flex-col items-center justify-center p-3">
+                    <FolderGit2 className="w-10 h-10 text-gh-text-muted mb-1" />
+                    <span className="font-mono text-xs text-gh-text-muted">my-project/ (untracked)</span>
                   </div>
                   <motion.div
-                    initial={{ scale: 0, rotate: -20 }}
+                    initial={{ scale: 0, rotate: -15 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: 'spring', damping: 12 }}
-                    className="absolute bg-emerald-500/20 border-2 border-emerald-500 rounded-xl px-4 py-2 text-emerald-300 font-mono text-xs shadow-2xl flex items-center gap-2"
+                    className="absolute bg-emerald-500/20 border-2 border-emerald-500 rounded-xl px-5 py-3 text-emerald-300 font-mono text-xs shadow-2xl flex items-center gap-2.5 backdrop-blur-md"
                   >
-                    <Database className="w-4 h-4 text-emerald-400" />
-                    <span>.git/ [objects, refs, HEAD]</span>
+                    <Database className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <div className="font-bold text-emerald-400">.git/ Database Created</div>
+                      <div className="text-[10px] text-emerald-200">objects/ • refs/heads/main • HEAD</div>
+                    </div>
                   </motion.div>
                 </div>
-                <div className="font-mono text-xs text-gh-accent flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Initialized empty Git repository on main
+                <div className="font-mono text-xs text-gh-accent flex items-center gap-1.5 bg-gh-accent/10 px-3 py-1 rounded-full border border-gh-accent/30">
+                  <CheckCircle2 className="w-4 h-4" /> HEAD points to default branch &apos;main&apos;
                 </div>
               </div>
             )}
@@ -249,72 +311,78 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {/* 1-4: clone-stream */}
             {activeExplainer.visualScene === 'clone-stream' && (
               <div className="flex items-center justify-around w-full max-w-md">
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-14 h-14 rounded-2xl bg-purple-600/20 border border-purple-500 flex items-center justify-center text-purple-400 shadow-xl">
-                    <Cloud className="w-7 h-7" />
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-16 h-16 rounded-2xl bg-purple-600/20 border border-purple-500 flex items-center justify-center text-purple-400 shadow-xl">
+                    <Cloud className="w-8 h-8" />
                   </div>
-                  <span className="font-mono text-[11px] text-purple-300">GitHub Remote</span>
+                  <span className="font-mono text-xs text-purple-300 font-bold">GitHub Remote</span>
                 </div>
                 <div className="flex flex-col items-center gap-1">
                   <motion.div
-                    animate={{ x: [-20, 20] }}
+                    animate={{ x: [-30, 30] }}
                     transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
-                    className="bg-emerald-400 text-black font-mono font-bold text-[10px] px-2.5 py-1 rounded-full shadow"
+                    className="bg-emerald-400 text-black font-mono font-bold text-xs px-3 py-1 rounded-full shadow-lg"
                   >
                     Packfile ➔
                   </motion.div>
-                  <span className="text-[10px] text-gh-text-muted font-mono">objects & refs</span>
+                  <span className="text-[10px] text-gh-text-muted font-mono">100% commits &amp; trees</span>
                 </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-14 h-14 rounded-2xl bg-gh-accent/20 border border-gh-accent flex items-center justify-center text-gh-accent shadow-xl">
-                    <FolderGit2 className="w-7 h-7" />
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-16 h-16 rounded-2xl bg-gh-accent/20 border border-gh-accent flex items-center justify-center text-gh-accent shadow-xl">
+                    <FolderGit2 className="w-8 h-8" />
                   </div>
-                  <span className="font-mono text-[11px] text-gh-accent">Local Clone</span>
+                  <span className="font-mono text-xs text-gh-accent font-bold">Local Clone</span>
                 </div>
               </div>
             )}
 
             {/* 2-1: scan-status */}
             {activeExplainer.visualScene === 'scan-status' && (
-              <div className="flex flex-col items-center space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-36 bg-gh-canvas border border-amber-500/50 rounded-xl p-3 shadow-lg">
-                    <div className="text-[10px] font-mono text-amber-400 mb-2">WORKING TREE</div>
-                    <div className="space-y-1 font-mono text-[11px]">
-                      <div className="text-rose-400 flex items-center gap-1"><Minus className="w-3 h-3" /> modified: app.js</div>
-                      <div className="text-rose-400 flex items-center gap-1"><Minus className="w-3 h-3" /> untracked: test.js</div>
+              <div className="flex flex-col items-center space-y-4 w-full max-w-lg">
+                <div className="grid grid-cols-2 gap-4 w-full">
+                  <div className="bg-gh-canvas border border-rose-500/50 rounded-xl p-3 shadow-lg">
+                    <div className="text-[10px] font-mono text-rose-400 font-bold mb-2 flex items-center justify-between">
+                      <span>WORKING TREE</span>
+                      <span className="text-[9px] bg-rose-500/20 px-1.5 py-0.5 rounded">UNSTAGED</span>
+                    </div>
+                    <div className="space-y-1 font-mono text-xs">
+                      <div className="text-rose-400 flex items-center gap-1.5"><Minus className="w-3.5 h-3.5" /> modified: app.js</div>
+                      <div className="text-rose-400 flex items-center gap-1.5"><Minus className="w-3.5 h-3.5" /> untracked: test.js</div>
                     </div>
                   </div>
-                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}>
-                    <Search className="w-6 h-6 text-gh-accent" />
-                  </motion.div>
-                  <div className="w-36 bg-gh-canvas border border-emerald-500/50 rounded-xl p-3 shadow-lg">
-                    <div className="text-[10px] font-mono text-emerald-400 mb-2">STAGING AREA</div>
-                    <div className="space-y-1 font-mono text-[11px]">
-                      <div className="text-emerald-400 flex items-center gap-1"><Plus className="w-3 h-3" /> staged: style.css</div>
+                  <div className="bg-gh-canvas border border-emerald-500/50 rounded-xl p-3 shadow-lg">
+                    <div className="text-[10px] font-mono text-emerald-400 font-bold mb-2 flex items-center justify-between">
+                      <span>STAGING INDEX</span>
+                      <span className="text-[9px] bg-emerald-500/20 px-1.5 py-0.5 rounded">STAGED</span>
+                    </div>
+                    <div className="space-y-1 font-mono text-xs">
+                      <div className="text-emerald-400 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> staged: style.css</div>
+                      <div className="text-emerald-400 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> staged: index.html</div>
                     </div>
                   </div>
                 </div>
-                <span className="font-mono text-xs text-gh-text-muted">Working directory clean inspection</span>
+                <div className="flex items-center gap-2 text-xs font-mono text-gh-accent">
+                  <Search className="w-4 h-4 animate-spin" /> Diff laser sweeps working directory vs index vs HEAD
+                </div>
               </div>
             )}
 
             {/* 2-2: add-file */}
             {activeExplainer.visualScene === 'add-file' && (
-              <div className="flex items-center justify-center gap-8 w-full">
-                <div className="w-36 p-3 bg-gh-canvas border border-gh-border rounded-xl text-center">
-                  <span className="text-[10px] font-mono text-gh-text-muted">Working Dir</span>
-                  <div className="text-xs font-mono text-rose-400 mt-1">index.html</div>
+              <div className="flex items-center justify-center gap-6 w-full max-w-lg">
+                <div className="w-40 p-3 bg-gh-canvas border border-gh-border rounded-xl text-center">
+                  <span className="text-[10px] font-mono text-gh-text-muted">Working Tree</span>
+                  <div className="text-xs font-mono text-rose-400 mt-1 font-bold">index.html (dirty)</div>
                 </div>
                 <motion.div
-                  animate={{ x: [0, 40, 0] }}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
-                  className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-2 py-1 rounded font-mono text-[10px] flex items-center gap-1"
+                  animate={{ x: [0, 24, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+                  className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-2.5 py-1.5 rounded-lg font-mono text-[11px] flex items-center gap-1.5 shadow"
                 >
-                  <FileText className="w-3 h-3" /> SHA-1 Blob ➔
+                  <FileText className="w-3.5 h-3.5" /> Blob Hash ➔
                 </motion.div>
-                <div className="w-36 p-3 bg-gh-canvas border border-emerald-500/50 rounded-xl text-center shadow-lg shadow-emerald-500/10">
-                  <span className="text-[10px] font-mono text-emerald-400">Staging Index</span>
+                <div className="w-40 p-3 bg-gh-canvas border border-emerald-500/60 rounded-xl text-center shadow-lg shadow-emerald-500/10">
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">Staging Index</span>
                   <div className="text-xs font-mono text-emerald-400 mt-1 font-bold">staged: index.html</div>
                 </div>
               </div>
@@ -322,50 +390,52 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
 
             {/* 2-3: add-all */}
             {activeExplainer.visualScene === 'add-all' && (
-              <div className="flex flex-col items-center space-y-3">
-                <div className="flex items-center gap-8">
-                  <div className="w-32 p-2.5 bg-gh-canvas border border-rose-500/40 rounded-xl space-y-1 font-mono text-[10px]">
+              <div className="flex flex-col items-center space-y-3 w-full max-w-md">
+                <div className="flex items-center gap-6 w-full justify-between">
+                  <div className="w-36 p-3 bg-gh-canvas border border-rose-500/40 rounded-xl space-y-1 font-mono text-[11px]">
                     <div className="text-rose-400">fileA.ts</div>
                     <div className="text-rose-400">fileB.css</div>
                     <div className="text-rose-400">fileC.json</div>
                   </div>
                   <motion.div
-                    animate={{ scale: [1, 1.15, 1] }}
+                    animate={{ scale: [1, 1.2, 1] }}
                     transition={{ repeat: Infinity, duration: 1.2 }}
-                    className="p-2 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500"
+                    className="p-3 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500 shadow-xl"
                   >
                     <ArrowRight className="w-5 h-5" />
                   </motion.div>
-                  <div className="w-32 p-2.5 bg-gh-canvas border border-emerald-500/50 rounded-xl space-y-1 font-mono text-[10px] shadow-lg shadow-emerald-500/10">
+                  <div className="w-36 p-3 bg-gh-canvas border border-emerald-500/60 rounded-xl space-y-1 font-mono text-[11px] shadow-lg shadow-emerald-500/10">
                     <div className="text-emerald-400">✔ fileA.ts</div>
                     <div className="text-emerald-400">✔ fileB.css</div>
                     <div className="text-emerald-400">✔ fileC.json</div>
                   </div>
                 </div>
-                <span className="text-xs font-mono text-emerald-400">Entire working tree captured in index snapshot</span>
+                <span className="text-xs font-mono text-emerald-400 font-medium">All changed and new files packaged into staging cache</span>
               </div>
             )}
 
             {/* 2-4: commit-msg */}
             {activeExplainer.visualScene === 'commit-msg' && (
               <div className="flex flex-col items-center space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gh-border flex items-center justify-center font-mono font-bold text-xs text-gh-text-muted">
+                <div className="flex items-center gap-6">
+                  <div className="w-14 h-14 rounded-full bg-gh-border flex flex-col items-center justify-center font-mono font-bold text-xs text-gh-text-muted">
                     c1
+                    <span className="text-[9px] font-normal">Parent</span>
                   </div>
-                  <div className="w-8 h-0.5 bg-gh-border" />
+                  <div className="w-10 h-0.5 bg-gh-border" />
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', damping: 10 }}
-                    className="w-14 h-14 rounded-full bg-emerald-500 flex flex-col items-center justify-center font-mono font-bold text-xs text-black shadow-xl shadow-emerald-500/25 ring-4 ring-emerald-500/30"
+                    className="w-16 h-16 rounded-full bg-emerald-500 flex flex-col items-center justify-center font-mono font-bold text-xs text-black shadow-2xl shadow-emerald-500/30 ring-4 ring-emerald-500/30"
                   >
                     c2
-                    <span className="text-[8px] font-normal">7fa28c</span>
+                    <span className="text-[9px] font-normal">7fa28c</span>
                   </motion.div>
                 </div>
-                <div className="bg-gh-canvas border border-gh-border px-3 py-1.5 rounded-lg text-xs font-mono text-emerald-300 shadow">
-                  &quot;commit message&quot; ➔ Parent: c1
+                <div className="bg-gh-canvas border border-gh-border px-4 py-2 rounded-xl text-xs font-mono text-emerald-300 shadow-lg flex items-center gap-2">
+                  <GitCommit className="w-4 h-4 text-emerald-400" />
+                  <span>&quot;commit message&quot; • HEAD ➔ main ➔ c2</span>
                 </div>
               </div>
             )}
@@ -373,50 +443,50 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {/* 2-5: commit-am */}
             {activeExplainer.visualScene === 'commit-am' && (
               <div className="flex flex-col items-center space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-gh-canvas border border-rose-500/40 rounded-xl text-center font-mono text-xs text-rose-300">
-                    Tracked Files
+                <div className="flex items-center gap-6">
+                  <div className="p-3 bg-gh-canvas border border-rose-500/50 rounded-xl text-center font-mono text-xs text-rose-300 font-bold">
+                    Modified Tracked
                   </div>
                   <motion.div animate={{ x: [0, 10, 0] }} transition={{ repeat: Infinity, duration: 1 }}>
-                    <div className="px-2 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded text-[10px] font-mono">
-                      Bypass Staging ➔
+                    <div className="px-3 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-lg text-xs font-mono font-bold">
+                      Direct Snapshot ➔
                     </div>
                   </motion.div>
-                  <div className="w-12 h-12 rounded-full bg-purple-500 text-black font-mono font-bold text-xs flex items-center justify-center shadow-lg">
+                  <div className="w-14 h-14 rounded-full bg-purple-500 text-black font-mono font-bold text-xs flex items-center justify-center shadow-xl">
                     c3
                   </div>
                 </div>
-                <span className="text-xs font-mono text-purple-300">Auto-stages tracked modifications and snapshots directly</span>
+                <span className="text-xs font-mono text-purple-300">Skips manual git add — commits tracked modifications in one stroke</span>
               </div>
             )}
 
             {/* 2-6: log-graph */}
             {activeExplainer.visualScene === 'log-graph' && (
-              <div className="w-80 bg-gh-canvas border border-gh-border rounded-xl p-3 shadow-xl font-mono text-xs space-y-1.5">
+              <div className="w-88 bg-gh-canvas border border-gh-border rounded-xl p-4 shadow-xl font-mono text-xs space-y-2">
                 <div className="flex items-center gap-2 text-emerald-400">
-                  <span>*</span> <span className="text-yellow-400">9b2f1a</span> <span className="text-white">(HEAD -&gt; main)</span> feat: auth
+                  <span className="font-bold">*</span> <span className="text-yellow-400">9b2f1a</span> <span className="text-gh-accent font-bold">(HEAD -&gt; main)</span> feat: auth
                 </div>
                 <div className="flex items-center gap-2 text-purple-400 pl-2">
                   <span>|</span> <span className="text-yellow-400">8e4d20</span> style: navbar
                 </div>
                 <div className="flex items-center gap-2 text-gh-text-muted pl-2">
-                  <span>*</span> <span className="text-yellow-400">5a1c09</span> initial commit
+                  <span className="font-bold">*</span> <span className="text-yellow-400">5a1c09</span> initial project setup
                 </div>
               </div>
             )}
 
             {/* 3-1: branch-list */}
             {activeExplainer.visualScene === 'branch-list' && (
-              <div className="w-72 bg-gh-canvas border border-gh-border rounded-xl p-3 shadow-xl space-y-2">
-                <div className="flex items-center justify-between p-2 rounded bg-emerald-500/10 border border-emerald-500/40">
-                  <span className="font-mono text-xs text-emerald-400 font-bold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> * main
+              <div className="w-80 bg-gh-canvas border border-gh-border rounded-xl p-4 shadow-xl space-y-2.5">
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40">
+                  <span className="font-mono text-xs text-emerald-400 font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> * main
                   </span>
-                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono">ACTIVE</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono font-bold">ACTIVE (HEAD)</span>
                 </div>
-                <div className="flex items-center justify-between p-2 rounded bg-gh-canvas-subtle border border-gh-border">
-                  <span className="font-mono text-xs text-gh-text-muted flex items-center gap-1.5">
-                    <GitBranch className="w-3.5 h-3.5" /> feature-login
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-gh-canvas-subtle border border-gh-border">
+                  <span className="font-mono text-xs text-gh-text-muted flex items-center gap-2">
+                    <GitBranch className="w-4 h-4" /> feature-login
                   </span>
                 </div>
               </div>
@@ -425,8 +495,8 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {/* 3-2: switch-create */}
             {activeExplainer.visualScene === 'switch-create' && (
               <div className="flex flex-col items-center space-y-4">
-                <div className="flex items-center gap-6">
-                  <div className="w-12 h-12 rounded-full bg-gh-border flex items-center justify-center font-mono font-bold text-xs text-gh-text">
+                <div className="flex items-center gap-8">
+                  <div className="w-14 h-14 rounded-full bg-gh-border flex items-center justify-center font-mono font-bold text-xs text-gh-text">
                     c1
                   </div>
                   <motion.div
@@ -435,16 +505,16 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
                     transition={{ type: 'spring' }}
                     className="flex flex-col items-center"
                   >
-                    <div className="bg-purple-500 text-black px-2.5 py-1 rounded font-mono font-bold text-xs shadow-lg">
-                      feature*
+                    <div className="bg-purple-500 text-black px-3 py-1 rounded font-mono font-bold text-xs shadow-lg flex items-center gap-1">
+                      <GitBranch className="w-3.5 h-3.5" /> feature*
                     </div>
                     <ArrowDown className="w-4 h-4 text-purple-400" />
-                    <div className="w-12 h-12 rounded-full bg-purple-500 text-black flex items-center justify-center font-mono font-bold text-xs shadow-xl">
+                    <div className="w-14 h-14 rounded-full bg-purple-500 text-black flex items-center justify-center font-mono font-bold text-xs shadow-xl">
                       c2
                     </div>
                   </motion.div>
                 </div>
-                <span className="text-xs font-mono text-purple-300">HEAD magnetically detached from main and pinned to new branch</span>
+                <span className="text-xs font-mono text-purple-300">Creates new branch tag AND points HEAD to it simultaneously</span>
               </div>
             )}
 
@@ -452,43 +522,43 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {activeExplainer.visualScene === 'switch-existing' && (
               <div className="flex flex-col items-center space-y-4">
                 <div className="flex items-center gap-8">
-                  <div className="p-3 bg-gh-canvas border border-gh-border rounded-xl text-center">
+                  <div className="p-3.5 bg-gh-canvas border border-gh-border rounded-xl text-center">
                     <div className="text-xs font-mono text-gh-text-muted">branch: main</div>
                   </div>
                   <motion.div animate={{ x: [0, 20, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-                    <div className="px-2 py-1 bg-gh-accent text-white rounded font-mono text-[10px] font-bold">
+                    <div className="px-3 py-1 bg-gh-accent text-white rounded font-mono text-xs font-bold shadow-lg">
                       HEAD ➔
                     </div>
                   </motion.div>
-                  <div className="p-3 bg-gh-canvas border border-emerald-500/50 rounded-xl text-center shadow-lg shadow-emerald-500/10">
+                  <div className="p-3.5 bg-gh-canvas border border-emerald-500/50 rounded-xl text-center shadow-lg shadow-emerald-500/10">
                     <div className="text-xs font-mono text-emerald-400 font-bold">branch: feature</div>
                   </div>
                 </div>
-                <span className="text-xs font-mono text-gh-accent">Working tree smoothly swaps out files to match feature snapshot</span>
+                <span className="text-xs font-mono text-gh-accent">Working tree files seamlessly reloaded from feature snapshot</span>
               </div>
             )}
 
             {/* 3-4: merge-branches */}
             {activeExplainer.visualScene === 'merge-branches' && (
               <div className="flex flex-col items-center space-y-3">
-                <div className="relative flex items-center justify-center w-64 h-24">
-                  <div className="absolute left-4 top-2 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-mono text-[10px] text-white">main</div>
-                  <div className="absolute left-4 bottom-2 w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center font-mono text-[10px] text-white">feat</div>
+                <div className="relative flex items-center justify-center w-72 h-28">
+                  <div className="absolute left-4 top-2 w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-mono text-xs text-white shadow-lg">main</div>
+                  <div className="absolute left-4 bottom-2 w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center font-mono text-xs text-white shadow-lg">feat</div>
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.2, type: 'spring' }}
-                    className="absolute right-4 w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-mono text-xs font-bold text-white shadow-2xl ring-2 ring-white/20"
+                    className="absolute right-4 w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center font-mono text-xs font-bold text-white shadow-2xl ring-2 ring-white/30"
                   >
                     Merge
                   </motion.div>
                   {/* Joining lines */}
                   <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                    <line x1="48" y1="20" x2="190" y2="48" stroke="#388bfd" strokeWidth="2" strokeDasharray="3 3" />
-                    <line x1="48" y1="76" x2="190" y2="48" stroke="#a371f7" strokeWidth="2" strokeDasharray="3 3" />
+                    <line x1="56" y1="22" x2="220" y2="56" stroke="#388bfd" strokeWidth="2.5" strokeDasharray="4 3" />
+                    <line x1="56" y1="90" x2="220" y2="56" stroke="#a371f7" strokeWidth="2.5" strokeDasharray="4 3" />
                   </svg>
                 </div>
-                <span className="text-xs font-mono text-purple-300">3-Way Merge Commit with two parent pointers created</span>
+                <span className="text-xs font-mono text-purple-300">3-Way Merge Commit with dual parent pointers forged!</span>
               </div>
             )}
 
@@ -498,28 +568,28 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
                 <div className="relative p-4 bg-gh-canvas border border-gh-border rounded-xl">
                   <motion.div
                     animate={{ opacity: [1, 0.2, 0], scale: [1, 0.95, 0.9] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="flex items-center gap-2 bg-rose-500/20 text-rose-300 border border-rose-500/40 px-3 py-1.5 rounded font-mono text-xs"
+                    transition={{ repeat: Infinity, duration: 1.8 }}
+                    className="flex items-center gap-2 bg-rose-500/20 text-rose-300 border border-rose-500/40 px-3.5 py-2 rounded-lg font-mono text-xs font-bold"
                   >
                     <Trash2 className="w-4 h-4 text-rose-400" />
                     <span>Deleted refs/heads/feature</span>
                   </motion.div>
                 </div>
-                <span className="text-xs font-mono text-emerald-400">Safely pruned pointer — commits preserved in history</span>
+                <span className="text-xs font-mono text-emerald-400">Safely pruned merged pointer — commit history remains intact</span>
               </div>
             )}
 
             {/* 3-6: branch-rename */}
             {activeExplainer.visualScene === 'branch-rename' && (
-              <div className="flex items-center gap-4">
-                <div className="px-3 py-1.5 bg-gh-canvas border border-gh-border rounded font-mono text-xs text-gh-text-muted line-through">
+              <div className="flex items-center gap-6">
+                <div className="px-4 py-2 bg-gh-canvas border border-gh-border rounded-lg font-mono text-xs text-gh-text-muted line-through">
                   old-branch
                 </div>
-                <ArrowRight className="w-4 h-4 text-gh-accent" />
+                <ArrowRight className="w-5 h-5 text-gh-accent" />
                 <motion.div
                   initial={{ scale: 0.8 }}
                   animate={{ scale: 1 }}
-                  className="px-3 py-1.5 bg-emerald-500/20 border border-emerald-500 text-emerald-300 rounded font-mono text-xs font-bold shadow"
+                  className="px-4 py-2 bg-emerald-500/20 border border-emerald-500 text-emerald-300 rounded-lg font-mono text-xs font-bold shadow-lg"
                 >
                   new-name
                 </motion.div>
@@ -529,20 +599,20 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {/* 4-1: remote-add */}
             {activeExplainer.visualScene === 'remote-add' && (
               <div className="flex items-center justify-around w-full max-w-sm">
-                <div className="flex flex-col items-center gap-1 font-mono text-xs">
-                  <div className="w-12 h-12 rounded-xl bg-gh-canvas border border-gh-border flex items-center justify-center text-gh-accent">
-                    <FolderGit2 className="w-6 h-6" />
+                <div className="flex flex-col items-center gap-1.5 font-mono text-xs">
+                  <div className="w-14 h-14 rounded-2xl bg-gh-canvas border border-gh-border flex items-center justify-center text-gh-accent shadow-md">
+                    <FolderGit2 className="w-7 h-7" />
                   </div>
-                  <span>Local</span>
+                  <span className="font-bold">Local</span>
                 </div>
-                <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-                  <Link2 className="w-6 h-6 text-purple-400" />
+                <motion.div animate={{ scale: [1, 1.25, 1] }} transition={{ repeat: Infinity, duration: 1.2 }}>
+                  <Link2 className="w-7 h-7 text-purple-400" />
                 </motion.div>
-                <div className="flex flex-col items-center gap-1 font-mono text-xs">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500 flex items-center justify-center text-purple-300">
-                    <Cloud className="w-6 h-6" />
+                <div className="flex flex-col items-center gap-1.5 font-mono text-xs">
+                  <div className="w-14 h-14 rounded-2xl bg-purple-500/20 border border-purple-500 flex items-center justify-center text-purple-300 shadow-xl">
+                    <Cloud className="w-7 h-7" />
                   </div>
-                  <span>origin</span>
+                  <span className="font-bold text-purple-300">origin</span>
                 </div>
               </div>
             )}
@@ -551,13 +621,13 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {activeExplainer.visualScene === 'push-upstream' && (
               <div className="flex flex-col items-center space-y-4">
                 <div className="flex items-center gap-6">
-                  <div className="font-mono text-xs text-gh-accent">local: main</div>
-                  <motion.div animate={{ y: [-4, 4, -4] }} transition={{ repeat: Infinity, duration: 1.2 }}>
-                    <ArrowUp className="w-5 h-5 text-emerald-400" />
+                  <div className="font-mono text-xs text-gh-accent font-bold">local: main</div>
+                  <motion.div animate={{ y: [-4, 4, -4] }} transition={{ repeat: Infinity, duration: 1 }}>
+                    <ArrowUp className="w-6 h-6 text-emerald-400" />
                   </motion.div>
-                  <div className="font-mono text-xs text-purple-300">origin/main [Tracking]</div>
+                  <div className="font-mono text-xs text-purple-300 font-bold">origin/main [Tracking]</div>
                 </div>
-                <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded border border-emerald-500/30">
+                <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3.5 py-1.5 rounded-lg border border-emerald-500/30">
                   Branch &apos;main&apos; set up to track remote &apos;origin/main&apos;
                 </span>
               </div>
@@ -566,18 +636,18 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {/* 4-3: push-sync */}
             {activeExplainer.visualScene === 'push-sync' && (
               <div className="flex items-center justify-around w-full max-w-sm">
-                <div className="w-10 h-10 rounded-full bg-gh-accent text-white flex items-center justify-center font-mono font-bold text-xs">
+                <div className="w-12 h-12 rounded-full bg-gh-accent text-white flex items-center justify-center font-mono font-bold text-xs shadow-lg">
                   c3
                 </div>
                 <motion.div
                   animate={{ x: [-20, 20] }}
                   transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                  className="bg-emerald-400 text-black font-mono font-bold text-[9px] px-2 py-0.5 rounded-full"
+                  className="bg-emerald-400 text-black font-mono font-bold text-[10px] px-3 py-1 rounded-full shadow"
                 >
                   Push ➔
                 </motion.div>
-                <div className="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500 flex items-center justify-center text-purple-400">
-                  <Cloud className="w-6 h-6" />
+                <div className="w-14 h-14 rounded-2xl bg-purple-600/20 border border-purple-500 flex items-center justify-center text-purple-400 shadow-xl">
+                  <Cloud className="w-7 h-7" />
                 </div>
               </div>
             )}
@@ -586,49 +656,49 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {activeExplainer.visualScene === 'fetch-metadata' && (
               <div className="flex flex-col items-center space-y-3">
                 <div className="flex items-center gap-6">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500 flex items-center justify-center text-purple-300">
-                    <Cloud className="w-6 h-6" />
+                  <div className="w-14 h-14 rounded-2xl bg-purple-500/20 border border-purple-500 flex items-center justify-center text-purple-300 shadow-xl">
+                    <Cloud className="w-7 h-7" />
                   </div>
                   <motion.div animate={{ x: [10, -10] }} transition={{ repeat: Infinity, duration: 1 }}>
-                    <ArrowRight className="w-5 h-5 text-purple-400 rotate-180" />
+                    <ArrowRight className="w-6 h-6 text-purple-400 rotate-180" />
                   </motion.div>
-                  <div className="font-mono text-xs text-purple-300 border border-purple-500/40 p-2 rounded">
+                  <div className="font-mono text-xs text-purple-300 border border-purple-500/40 p-2.5 rounded-xl bg-purple-500/10">
                     origin/main updated
                   </div>
                 </div>
-                <span className="text-xs font-mono text-gh-text-muted">Working files untouched — remote references refreshed</span>
+                <span className="text-xs font-mono text-gh-text-muted">Working files untouched — remote references refreshed safely</span>
               </div>
             )}
 
             {/* 4-5: pull-merge */}
             {activeExplainer.visualScene === 'pull-merge' && (
-              <div className="flex items-center gap-3 font-mono text-xs">
-                <div className="p-2 bg-gh-canvas border border-gh-border rounded text-purple-400">1. Fetch</div>
-                <ArrowRight className="w-4 h-4 text-gh-text-muted" />
-                <div className="p-2 bg-emerald-500/20 border border-emerald-500 rounded text-emerald-300 font-bold">2. Merge HEAD</div>
+              <div className="flex items-center gap-4 font-mono text-xs">
+                <div className="p-3 bg-gh-canvas border border-gh-border rounded-xl text-purple-400 font-bold">1. git fetch</div>
+                <ArrowRight className="w-5 h-5 text-gh-text-muted" />
+                <div className="p-3 bg-emerald-500/20 border border-emerald-500 rounded-xl text-emerald-300 font-bold shadow-lg">2. git merge origin/main</div>
               </div>
             )}
 
             {/* 4-6: remote-prune */}
             {activeExplainer.visualScene === 'remote-prune' && (
               <div className="flex flex-col items-center space-y-3">
-                <div className="p-3 bg-gh-canvas border border-gh-border rounded-xl font-mono text-xs space-y-1">
-                  <div className="text-gh-text-muted">[deleted] (none) -&gt; origin/old-feat</div>
+                <div className="p-4 bg-gh-canvas border border-gh-border rounded-xl font-mono text-xs space-y-1">
+                  <div className="text-gh-text-muted">[pruned] (none) -&gt; origin/deleted-feature</div>
                 </div>
-                <span className="text-xs font-mono text-rose-400">Pruned ghost remote branches from local cache</span>
+                <span className="text-xs font-mono text-rose-400 font-semibold">Ghost remote references purged from local cache</span>
               </div>
             )}
 
             {/* 5-1: restore-file */}
             {activeExplainer.visualScene === 'restore-file' && (
               <div className="flex items-center gap-6 font-mono text-xs">
-                <div className="p-3 bg-gh-canvas border border-rose-500/50 rounded-xl text-rose-300">
+                <div className="p-3.5 bg-gh-canvas border border-rose-500/50 rounded-xl text-rose-300 font-bold">
                   Dirty Working File
                 </div>
-                <motion.div animate={{ rotate: -360 }} transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}>
-                  <RefreshCw className="w-5 h-5 text-emerald-400" />
+                <motion.div animate={{ rotate: -360 }} transition={{ repeat: Infinity, duration: 1.8, ease: 'linear' }}>
+                  <RefreshCw className="w-6 h-6 text-emerald-400" />
                 </motion.div>
-                <div className="p-3 bg-gh-canvas border border-emerald-500/50 rounded-xl text-emerald-300">
+                <div className="p-3.5 bg-gh-canvas border border-emerald-500/50 rounded-xl text-emerald-300 font-bold">
                   Clean Restored State
                 </div>
               </div>
@@ -637,11 +707,11 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {/* 5-2: restore-staged */}
             {activeExplainer.visualScene === 'restore-staged' && (
               <div className="flex items-center gap-6 font-mono text-xs">
-                <div className="p-3 bg-gh-canvas border border-emerald-500/50 rounded-xl text-emerald-300">
+                <div className="p-3.5 bg-gh-canvas border border-emerald-500/50 rounded-xl text-emerald-300 font-bold">
                   Staging Index
                 </div>
                 <ArrowRight className="w-5 h-5 text-gh-accent" />
-                <div className="p-3 bg-gh-canvas border border-gh-border rounded-xl text-gh-text">
+                <div className="p-3.5 bg-gh-canvas border border-gh-border rounded-xl text-gh-text font-bold">
                   Unstaged Working Dir
                 </div>
               </div>
@@ -650,48 +720,50 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {/* 5-3: clean-force */}
             {activeExplainer.visualScene === 'clean-force' && (
               <div className="flex flex-col items-center space-y-3">
-                <div className="flex items-center gap-2">
-                  <Trash2 className="w-6 h-6 text-rose-400" />
-                  <motion.div animate={{ opacity: [1, 0] }} transition={{ repeat: Infinity, duration: 1.5 }} className="font-mono text-xs text-rose-400">
+                <div className="flex items-center gap-3">
+                  <Trash2 className="w-7 h-7 text-rose-400" />
+                  <motion.div animate={{ opacity: [1, 0] }} transition={{ repeat: Infinity, duration: 1.4 }} className="font-mono text-xs text-rose-400 font-bold">
                     Removing build/ dist/ untracked.log
                   </motion.div>
                 </div>
-                <span className="text-xs font-mono text-gh-text-muted">Untracked clutter completely vaporized</span>
+                <span className="text-xs font-mono text-gh-text-muted">Untracked files and directories permanently removed</span>
               </div>
             )}
 
             {/* 5-4: reset-soft */}
             {activeExplainer.visualScene === 'reset-soft' && (
               <div className="flex flex-col items-center space-y-3">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-gh-border flex items-center justify-center font-mono font-bold text-xs text-gh-text">c1</div>
+                <div className="flex items-center gap-5">
+                  <div className="w-12 h-12 rounded-full bg-gh-border flex items-center justify-center font-mono font-bold text-xs text-gh-text">c1</div>
                   <motion.div animate={{ x: [-10, 0] }} transition={{ duration: 0.5 }}>
-                    <div className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 border border-yellow-500 rounded font-mono text-[10px]">
-                      HEAD rolls back ➔
+                    <div className="px-3 py-1 bg-yellow-500/20 text-yellow-300 border border-yellow-500 rounded font-mono text-xs font-bold">
+                      HEAD rewinds ➔
                     </div>
                   </motion.div>
-                  <div className="w-10 h-10 rounded-full bg-rose-500/30 flex items-center justify-center font-mono text-xs text-gh-text-muted">c2</div>
+                  <div className="w-12 h-12 rounded-full bg-rose-500/30 flex items-center justify-center font-mono text-xs text-gh-text-muted">c2</div>
                 </div>
-                <span className="text-xs font-mono text-emerald-400">Changes safely kept staged in index!</span>
+                <span className="text-xs font-mono text-emerald-400 font-bold">File changes kept safely staged in Index!</span>
               </div>
             )}
 
             {/* 5-5: reset-hard */}
             {activeExplainer.visualScene === 'reset-hard' && (
               <div className="flex flex-col items-center space-y-3">
-                <div className="p-3 bg-rose-500/10 border border-rose-500/40 rounded-xl text-center">
-                  <div className="font-mono text-xs text-rose-400 font-bold mb-1">Time Machine Rewind</div>
-                  <div className="text-[11px] font-mono text-gh-text-muted">HEAD, Staging Index &amp; Working Tree rewound to snapshot</div>
+                <div className="p-4 bg-rose-500/10 border border-rose-500/40 rounded-xl text-center max-w-sm">
+                  <div className="font-mono text-xs text-rose-400 font-bold mb-1.5 flex items-center justify-center gap-1.5">
+                    <Zap className="w-4 h-4" /> Full Reset Time Machine
+                  </div>
+                  <div className="text-xs font-mono text-gh-text-muted">HEAD, Staging Area &amp; Working Tree all discarded to target commit</div>
                 </div>
               </div>
             )}
 
             {/* 5-6: revert-commit */}
             {activeExplainer.visualScene === 'revert-commit' && (
-              <div className="flex items-center gap-4 font-mono text-xs">
-                <div className="w-10 h-10 rounded-full bg-rose-500/40 flex items-center justify-center text-rose-200">c2 (bug)</div>
-                <ArrowRight className="w-4 h-4 text-gh-text-muted" />
-                <div className="w-12 h-12 rounded-full bg-emerald-500 text-black font-bold flex items-center justify-center shadow-lg">
+              <div className="flex items-center gap-6 font-mono text-xs">
+                <div className="w-12 h-12 rounded-full bg-rose-500/40 flex items-center justify-center text-rose-200 font-bold">c2 (bug)</div>
+                <ArrowRight className="w-5 h-5 text-gh-text-muted" />
+                <div className="w-14 h-14 rounded-full bg-emerald-500 text-black font-bold flex items-center justify-center shadow-xl">
                   c3 (inv)
                 </div>
               </div>
@@ -700,11 +772,11 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {/* 5-7: stash-save */}
             {activeExplainer.visualScene === 'stash-save' && (
               <div className="flex items-center gap-6">
-                <div className="font-mono text-xs text-rose-300">WIP uncommitted</div>
-                <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-                  <Archive className="w-6 h-6 text-purple-400" />
+                <div className="font-mono text-xs text-rose-300 font-bold">Uncommitted WIP</div>
+                <motion.div animate={{ scale: [1, 1.25, 1] }} transition={{ repeat: Infinity, duration: 1.4 }}>
+                  <Archive className="w-7 h-7 text-purple-400" />
                 </motion.div>
-                <div className="font-mono text-xs text-purple-300 bg-purple-500/10 border border-purple-500/40 px-3 py-1.5 rounded">
+                <div className="font-mono text-xs text-purple-300 bg-purple-500/10 border border-purple-500/40 px-3.5 py-2 rounded-xl font-bold">
                   stash@&#123;0&#125;
                 </div>
               </div>
@@ -713,11 +785,11 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {/* 5-8: stash-pop */}
             {activeExplainer.visualScene === 'stash-pop' && (
               <div className="flex items-center gap-6">
-                <div className="font-mono text-xs text-purple-300 bg-purple-500/10 border border-purple-500/40 px-3 py-1.5 rounded">
+                <div className="font-mono text-xs text-purple-300 bg-purple-500/10 border border-purple-500/40 px-3.5 py-2 rounded-xl font-bold">
                   stash@&#123;0&#125;
                 </div>
-                <ArrowRight className="w-5 h-5 text-emerald-400" />
-                <div className="font-mono text-xs text-emerald-400 font-bold">
+                <ArrowRight className="w-6 h-6 text-emerald-400" />
+                <div className="font-mono text-xs text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/30">
                   Restored onto clean branch!
                 </div>
               </div>
@@ -725,33 +797,35 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
 
             {/* 6-1: diff-working */}
             {activeExplainer.visualScene === 'diff-working' && (
-              <div className="w-80 bg-gh-canvas border border-gh-border rounded-xl p-3 font-mono text-xs space-y-1">
+              <div className="w-88 bg-gh-canvas border border-gh-border rounded-xl p-3.5 font-mono text-xs space-y-1.5">
                 <div className="text-gh-text-muted">--- a/src/app.ts</div>
                 <div className="text-gh-text-muted">+++ b/src/app.ts</div>
-                <div className="text-rose-400 bg-rose-500/10 px-1 rounded">- const timeout = 1000;</div>
-                <div className="text-emerald-400 bg-emerald-500/10 px-1 rounded">+ const timeout = 5000;</div>
+                <div className="text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded">- const timeout = 1000;</div>
+                <div className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">+ const timeout = 5000;</div>
               </div>
             )}
 
             {/* 6-2: diff-staged */}
             {activeExplainer.visualScene === 'diff-staged' && (
-              <div className="w-80 bg-gh-canvas border border-emerald-500/40 rounded-xl p-3 font-mono text-xs space-y-1">
-                <div className="text-emerald-400 font-bold mb-1">STAGED FOR COMMIT:</div>
-                <div className="text-rose-400 bg-rose-500/10 px-1 rounded">- let attempts = 1;</div>
-                <div className="text-emerald-400 bg-emerald-500/10 px-1 rounded">+ let attempts = 3;</div>
+              <div className="w-88 bg-gh-canvas border border-emerald-500/40 rounded-xl p-3.5 font-mono text-xs space-y-1.5">
+                <div className="text-emerald-400 font-bold mb-1 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> STAGED FOR NEXT COMMIT:
+                </div>
+                <div className="text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded">- let attempts = 1;</div>
+                <div className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">+ let attempts = 3;</div>
               </div>
             )}
 
             {/* 6-3: blame-track */}
             {activeExplainer.visualScene === 'blame-track' && (
-              <div className="w-84 bg-gh-canvas border border-gh-border rounded-xl p-3 font-mono text-[11px] space-y-1.5">
+              <div className="w-96 bg-gh-canvas border border-gh-border rounded-xl p-3.5 font-mono text-xs space-y-2">
                 <div className="flex items-center justify-between text-gh-text-muted">
                   <span className="text-yellow-400">8f21c0 (Alice 2d ago)</span>
-                  <span className="text-gh-text">function authenticate() &#123;</span>
+                  <span className="text-gh-text">function auth() &#123;</span>
                 </div>
                 <div className="flex items-center justify-between text-gh-text-muted">
                   <span className="text-purple-400">7a43b1 (Bob 1hr ago)</span>
-                  <span className="text-gh-text">  validateToken(jwt);</span>
+                  <span className="text-gh-text">  validateJwt(token);</span>
                 </div>
               </div>
             )}
@@ -760,43 +834,43 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {activeExplainer.visualScene === 'bisect-binary' && (
               <div className="flex flex-col items-center space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[10px]">Good</span>
-                  <div className="w-8 h-0.5 bg-gh-border" />
-                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }}>
-                    <Binary className="w-5 h-5 text-yellow-400" />
+                  <span className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 font-mono text-xs font-bold">Good (c1)</span>
+                  <div className="w-10 h-0.5 bg-gh-border" />
+                  <motion.div animate={{ scale: [1, 1.25, 1] }} transition={{ repeat: Infinity, duration: 1 }}>
+                    <Binary className="w-6 h-6 text-yellow-400" />
                   </motion.div>
-                  <div className="w-8 h-0.5 bg-gh-border" />
-                  <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 font-mono text-[10px]">Bad</span>
+                  <div className="w-10 h-0.5 bg-gh-border" />
+                  <span className="px-2.5 py-1 rounded bg-rose-500/20 text-rose-400 font-mono text-xs font-bold">Bad (c7)</span>
                 </div>
-                <span className="font-mono text-xs text-yellow-300">Binary search isolates offending commit in O(log N)</span>
+                <span className="font-mono text-xs text-yellow-300 font-semibold">Binary search divides search space logarithmically</span>
               </div>
             )}
 
             {/* 7-1: commit-amend */}
             {activeExplainer.visualScene === 'commit-amend' && (
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gh-border flex items-center justify-center font-mono text-xs text-gh-text-muted line-through">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 rounded-full bg-gh-border flex items-center justify-center font-mono text-xs text-gh-text-muted line-through">
                   c2
                 </div>
-                <ArrowRight className="w-4 h-4 text-emerald-400" />
+                <ArrowRight className="w-5 h-5 text-emerald-400" />
                 <motion.div
                   initial={{ scale: 0.8 }}
                   animate={{ scale: 1 }}
-                  className="w-14 h-14 rounded-full bg-emerald-500 text-black font-bold flex flex-col items-center justify-center font-mono text-xs shadow-xl"
+                  className="w-16 h-16 rounded-full bg-emerald-500 text-black font-bold flex flex-col items-center justify-center font-mono text-xs shadow-2xl"
                 >
                   c2&apos;
-                  <span className="text-[8px] font-normal">rewritten</span>
+                  <span className="text-[9px] font-normal">rewritten</span>
                 </motion.div>
               </div>
             )}
 
             {/* 7-2: rebase-interactive */}
             {activeExplainer.visualScene === 'rebase-interactive' && (
-              <div className="w-80 bg-gh-canvas border border-gh-border rounded-xl p-3 font-mono text-xs space-y-1">
-                <div className="text-emerald-400">pick 4a1bc9 feat: landing page</div>
-                <div className="text-purple-400">squash 8b31a2 fix typo in hero</div>
-                <div className="text-yellow-400">reword e9103c update readme</div>
-                <div className="text-rose-400">drop 71ff24 debug log statement</div>
+              <div className="w-88 bg-gh-canvas border border-gh-border rounded-xl p-3.5 font-mono text-xs space-y-1.5">
+                <div className="text-emerald-400 font-semibold">pick 4a1bc9 feat: landing page</div>
+                <div className="text-purple-400 font-semibold">squash 8b31a2 fix typo in hero</div>
+                <div className="text-yellow-400 font-semibold">reword e9103c update readme</div>
+                <div className="text-rose-400 font-semibold">drop 71ff24 debug log statement</div>
               </div>
             )}
 
@@ -805,35 +879,35 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
               <div className="flex flex-col items-center space-y-3">
                 <div className="flex items-center gap-8">
                   <div className="flex flex-col items-center">
-                    <span className="text-[10px] font-mono text-purple-400">feature</span>
-                    <div className="w-10 h-10 rounded-full bg-purple-500 text-black font-bold flex items-center justify-center font-mono text-xs mt-1">
+                    <span className="text-xs font-mono text-purple-400 font-bold">feature</span>
+                    <div className="w-12 h-12 rounded-full bg-purple-500 text-black font-bold flex items-center justify-center font-mono text-xs mt-1 shadow-lg">
                       c_hot
                     </div>
                   </div>
-                  <motion.div animate={{ y: [-10, 10, -10] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-                    <Scissors className="w-5 h-5 text-yellow-400" />
+                  <motion.div animate={{ y: [-10, 10, -10] }} transition={{ repeat: Infinity, duration: 1.4 }}>
+                    <Scissors className="w-6 h-6 text-yellow-400" />
                   </motion.div>
                   <div className="flex flex-col items-center">
-                    <span className="text-[10px] font-mono text-blue-400">main</span>
-                    <div className="w-10 h-10 rounded-full bg-blue-500 text-white font-bold flex items-center justify-center font-mono text-xs mt-1">
+                    <span className="text-xs font-mono text-blue-400 font-bold">main</span>
+                    <div className="w-12 h-12 rounded-full bg-blue-500 text-white font-bold flex items-center justify-center font-mono text-xs mt-1 shadow-lg">
                       c_copy
                     </div>
                   </div>
                 </div>
-                <span className="text-xs font-mono text-gh-accent">Transplanted isolated commit directly onto target HEAD</span>
+                <span className="text-xs font-mono text-gh-accent font-semibold">Surgically copied commit diff onto active HEAD</span>
               </div>
             )}
 
             {/* 7-4: reflog-reel */}
             {activeExplainer.visualScene === 'reflog-reel' && (
-              <div className="w-80 bg-gh-canvas border border-gh-border rounded-xl p-3 font-mono text-xs space-y-1">
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <History className="w-3.5 h-3.5" /> HEAD@&#123;0&#125;: commit: feat auth
+              <div className="w-88 bg-gh-canvas border border-gh-border rounded-xl p-3.5 font-mono text-xs space-y-1.5">
+                <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                  <History className="w-4 h-4" /> HEAD@&#123;0&#125;: commit: feat auth
                 </div>
-                <div className="flex items-center gap-2 text-yellow-400 pl-5">
+                <div className="flex items-center gap-2 text-yellow-400 pl-6">
                   HEAD@&#123;1&#125;: reset: moving to HEAD~1
                 </div>
-                <div className="flex items-center gap-2 text-purple-400 pl-5">
+                <div className="flex items-center gap-2 text-purple-400 pl-6">
                   HEAD@&#123;2&#125;: checkout: moving to main
                 </div>
               </div>
@@ -841,28 +915,28 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
 
             {/* 8-1: gh-pr-create */}
             {activeExplainer.visualScene === 'gh-pr-create' && (
-              <div className="w-80 bg-gh-canvas border border-gh-border rounded-xl p-3.5 shadow-2xl space-y-2">
+              <div className="w-88 bg-gh-canvas border border-gh-border rounded-xl p-4 shadow-2xl space-y-2.5">
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
                   <GitPullRequest className="w-4 h-4" /> Open Pull Request #42
                 </div>
-                <div className="font-mono text-[11px] text-gh-text-muted">
-                  Merging <span className="text-purple-400">feature</span> into <span className="text-blue-400">main</span>
+                <div className="font-mono text-xs text-gh-text-muted">
+                  Merging <span className="text-purple-400 font-bold">feature</span> into <span className="text-blue-400 font-bold">main</span>
                 </div>
-                <div className="flex items-center gap-2 text-[10px] text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded">
-                  <CheckCircle2 className="w-3 h-3" /> CI Checks passed (3/3)
+                <div className="flex items-center gap-2 text-xs text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> CI Checks passed (3/3)
                 </div>
               </div>
             )}
 
             {/* 8-2: gh-repo-view */}
             {activeExplainer.visualScene === 'gh-repo-view' && (
-              <div className="w-80 bg-gh-canvas border border-gh-border rounded-xl p-3.5 shadow-2xl space-y-2">
+              <div className="w-88 bg-gh-canvas border border-gh-border rounded-xl p-4 shadow-2xl space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-gh-text">user/GitPlayGround</span>
-                  <span className="text-[10px] bg-gh-accent/20 text-gh-accent px-1.5 py-0.5 rounded font-mono">Public</span>
+                  <span className="text-[10px] bg-gh-accent/20 text-gh-accent px-2 py-0.5 rounded font-mono font-bold">Public</span>
                 </div>
-                <p className="text-[11px] text-gh-text-muted leading-tight">Interactive Animated Git learning platform</p>
-                <div className="flex items-center gap-4 text-[10px] font-mono text-gh-text-muted pt-1">
+                <p className="text-xs text-gh-text-muted leading-tight">Interactive Animated Git learning platform</p>
+                <div className="flex items-center gap-4 text-xs font-mono text-gh-text-muted pt-1">
                   <span>★ 1.2k stars</span>
                   <span>⑂ 240 forks</span>
                 </div>
@@ -872,12 +946,13 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Step Description & Timeline Dots */}
-      <div className="bg-gh-canvas-subtle border-t border-gh-border p-3.5">
+      {/* Step Description & Key Takeaway Footer */}
+      <div className="bg-gh-canvas-subtle border-t border-gh-border p-3.5 shrink-0">
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold text-gh-accent">
-              {language === 'bn' ? currentStep.titleBn : currentStep.titleEn}
+            <span className="text-xs font-bold text-gh-accent flex items-center space-x-1">
+              <Sparkles className="w-3.5 h-3.5 text-gh-accent" />
+              <span>{language === 'bn' ? currentStep.titleBn : currentStep.titleEn}</span>
             </span>
             <span className="text-[10px] font-mono text-gh-text-muted">
               ({currentStepIndex + 1}/{totalSteps})
@@ -889,12 +964,13 @@ export const AnimatedExplainer: React.FC<AnimatedExplainerProps> = ({
             {activeExplainer.steps.map((_, idx) => (
               <button
                 key={idx}
-                onClick={() => setCurrentStepIndex(idx)}
+                onClick={() => { setCurrentStepIndex(idx); setIsPlaying(false); }}
                 className={`h-1.5 rounded-full transition-all ${
                   idx === currentStepIndex
-                    ? 'w-6 bg-gh-accent'
-                    : 'w-1.5 bg-gh-border hover:bg-gh-text-muted'
+                    ? 'w-7 bg-gh-accent'
+                    : 'w-2 bg-gh-border hover:bg-gh-text-muted'
                 }`}
+                title={`Jump to Step ${idx + 1}`}
               />
             ))}
           </div>

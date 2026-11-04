@@ -16,7 +16,7 @@ import { VirtualGit } from './engine/VirtualGit';
 import { GitState } from './types/git';
 import { generateFeedback } from './engine/feedbackHelper';
 import { loadStoredProgress, saveStoredProgress } from './config/firebase';
-import { GitCommit, Workflow, FlaskConical, X, Play, Film } from 'lucide-react';
+import { GitCommit, Workflow, FlaskConical, X, Play, Film, Columns2 } from 'lucide-react';
 
 export const App: React.FC = () => {
   const initialStored = useMemo(() => loadStoredProgress(), []);
@@ -39,8 +39,8 @@ export const App: React.FC = () => {
   // Command Execution Feedback
   const [commandFeedback, setCommandFeedback] = useState<CommandFeedback | null>(null);
 
-  // UI Tabs & Modals (3 tabs: graph, animation, actions)
-  const [rightTab, setRightTab] = useState<'graph' | 'animation' | 'actions'>('graph');
+  // UI Tabs & Modals (split, graph, animation, actions)
+  const [rightTab, setRightTab] = useState<'split' | 'graph' | 'animation' | 'actions'>('split');
   const [quickCommand, setQuickCommand] = useState<string | undefined>(undefined);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
 
@@ -262,6 +262,18 @@ export const App: React.FC = () => {
           <div className="h-10 bg-gh-canvas border-b border-gh-border px-3 flex items-center justify-between select-none">
             <div className="flex items-center space-x-1">
               <button
+                onClick={() => setRightTab('split')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                  rightTab === 'split'
+                    ? 'bg-gh-canvas-subtle text-emerald-400 border border-gh-border shadow-sm'
+                    : 'text-gh-text-muted hover:text-gh-text'
+                }`}
+              >
+                <Columns2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{language === 'bn' ? '🔀 স্প্লিট মোড (অ্যানিমেশন + গ্রাফ)' : '🔀 Split Mode (Both)'}</span>
+              </button>
+
+              <button
                 onClick={() => setRightTab('graph')}
                 className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
                   rightTab === 'graph'
@@ -270,7 +282,7 @@ export const App: React.FC = () => {
                 }`}
               >
                 <GitCommit className="w-3.5 h-3.5" />
-                <span>{language === 'bn' ? 'কমিট গ্রাফ ও লাইফসাইকেল' : 'Commit Graph & Lifecycle'}</span>
+                <span>{language === 'bn' ? 'কমিট গ্রাফ' : 'Commit Graph'}</span>
               </button>
 
               <button
@@ -282,7 +294,7 @@ export const App: React.FC = () => {
                 }`}
               >
                 <Film className="w-3.5 h-3.5 text-rose-400" />
-                <span>{language === 'bn' ? '🎬 লাইভ অ্যানিমেশন প্লেয়ার' : '🎬 Live Animation Player'}</span>
+                <span>{language === 'bn' ? '🎬 ফুলস্ক্রিন অ্যানিমেশন' : '🎬 Full Animation'}</span>
               </button>
 
               <button
@@ -305,7 +317,33 @@ export const App: React.FC = () => {
 
           {/* View Container */}
           <div className="flex-1 flex flex-col overflow-hidden p-3 overflow-y-auto custom-scrollbar">
-            {/* Tab 1: Live Interactive Commit Graph + 3-Tier Lifecycle */}
+            {/* Mode 1: Split Mode (Animated Explainer ON TOP + Interactive Graph & Lifecycle UNDERNEATH) */}
+            {rightTab === 'split' && (
+              <div className="flex flex-col space-y-3">
+                <div className="h-[380px] shrink-0">
+                  <AnimatedExplainer
+                    lessonId={currentLesson.id}
+                    currentCommandHint={currentLesson.quickCommands[0] || currentLesson.summaryEn}
+                    language={language}
+                  />
+                </div>
+
+                {currentLevelId === 1 && (
+                  <ConfigCard gitState={gitState} language={language} />
+                )}
+
+                <div className="min-h-[260px] bg-gh-canvas rounded-xl border border-gh-border overflow-hidden">
+                  <GitGraph gitState={gitState} />
+                </div>
+
+                <LifecycleView
+                  gitState={gitState}
+                  onQuickAdd={(file) => handleQuickRun(`git add ${file}`)}
+                />
+              </div>
+            )}
+
+            {/* Mode 2: Live Interactive Commit Graph + 3-Tier Lifecycle */}
             {rightTab === 'graph' && (
               <>
                 {/* Visual callout button to jump to animated explainer */}
@@ -319,11 +357,11 @@ export const App: React.FC = () => {
                     </span>
                   </div>
                   <button
-                    onClick={() => setRightTab('animation')}
-                    className="flex items-center space-x-1 px-3 py-1 rounded bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-semibold transition"
+                    onClick={() => setRightTab('split')}
+                    className="flex items-center space-x-1 px-3 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition"
                   >
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>{language === 'bn' ? 'অ্যানিমেশন দেখুন' : 'Watch Animation'}</span>
+                    <Columns2 className="w-3.5 h-3.5" />
+                    <span>{language === 'bn' ? 'স্প্লিট ভিউতে দেখুন' : 'Open in Split View'}</span>
                   </button>
                 </div>
 
