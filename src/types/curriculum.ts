@@ -16,6 +16,8 @@ export interface Lesson {
   titleBn: string;
   summaryEn: string;
   summaryBn: string;
+  whyUseThisEn: string;
+  whyUseThisBn: string;
   explanationEn: string;
   explanationBn: string;
   videoTimestamp?: string;

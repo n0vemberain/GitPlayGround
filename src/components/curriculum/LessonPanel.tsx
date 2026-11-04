@@ -10,7 +10,9 @@ import {
   ChevronLeft, 
   Lightbulb, 
   Terminal,
-  Trophy
+  Trophy,
+  Target,
+  Sparkles
 } from 'lucide-react';
 
 interface LessonPanelProps {
@@ -44,7 +46,7 @@ export const LessonPanel: React.FC<LessonPanelProps> = ({
           <span className="font-mono text-xs font-bold text-gh-accent bg-gh-accent/10 px-2 py-0.5 rounded border border-gh-accent/20">
             Level {currentLevel.number}
           </span>
-          <span className="text-xs text-gh-text-muted">
+          <span className="text-xs text-gh-text-muted truncate max-w-[200px]">
             {language === 'bn' ? currentLevel.subtitleBn : currentLevel.subtitleEn}
           </span>
         </div>
@@ -54,7 +56,7 @@ export const LessonPanel: React.FC<LessonPanelProps> = ({
             href={currentLesson.videoUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center space-x-1.5 text-[11px] text-gh-attention-fg hover:underline bg-gh-attention/10 px-2 py-0.5 rounded border border-gh-attention/20 transition"
+            className="flex items-center space-x-1.5 text-[11px] text-gh-attention-fg hover:underline bg-gh-attention/10 px-2 py-0.5 rounded border border-gh-attention/20 transition shrink-0"
             title="Watch in YouTube course"
           >
             <Play className="w-3 h-3 fill-current" />
@@ -75,29 +77,40 @@ export const LessonPanel: React.FC<LessonPanelProps> = ({
         </p>
       </div>
 
+      {/* 🎯 "Why Use This?" (কেন ব্যবহার করবেন?) Section */}
+      <div className="bg-gh-accent/10 border border-gh-accent/30 rounded-lg p-3.5 mb-3 text-xs leading-relaxed text-gh-text">
+        <div className="flex items-center space-x-1.5 font-bold text-gh-accent mb-1.5">
+          <Target className="w-4 h-4 text-gh-accent" />
+          <span>{language === 'bn' ? '🎯 কেন এই কমান্ডটি ব্যবহার করবেন?' : '🎯 Why Use This Command?'}</span>
+        </div>
+        <p className="text-gh-text text-[11px] leading-relaxed">
+          {language === 'bn' ? currentLesson.whyUseThisBn : currentLesson.whyUseThisEn}
+        </p>
+      </div>
+
       {/* Conceptual Explanation Box */}
-      <div className="bg-gh-canvas-subtle border border-gh-border rounded-lg p-3.5 mb-4 text-xs leading-relaxed text-gh-text">
-        <div className="whitespace-pre-line">
+      <div className="bg-gh-canvas-subtle border border-gh-border rounded-lg p-3 mb-4 text-xs leading-relaxed text-gh-text">
+        <div className="whitespace-pre-line text-[11px] leading-relaxed text-gh-text-muted">
           {language === 'bn' ? currentLesson.explanationBn : currentLesson.explanationEn}
         </div>
       </div>
 
       {/* Interactive Objectives Checklist */}
       <div className="border border-gh-border rounded-lg p-3.5 bg-gh-canvas-inset mb-4">
-        <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold uppercase tracking-wider text-gh-text flex items-center space-x-1.5">
             <Trophy className="w-3.5 h-3.5 text-gh-attention-fg" />
             <span>{language === 'bn' ? 'চ্যালেঞ্জ অবজেক্টিভস' : 'Challenge Objectives'}</span>
           </span>
           {isAllTasksComplete && (
-            <span className="text-[11px] font-semibold text-gh-success-fg flex items-center space-x-1">
+            <span className="text-[11px] font-semibold text-gh-success-fg flex items-center space-x-1 animate-pulse">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>{language === 'bn' ? 'সম্পন্ন হয়েছে!' : 'Completed!'}</span>
             </span>
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {currentLesson.tasks.map((task) => (
             <div
               key={task.id}
@@ -112,7 +125,7 @@ export const LessonPanel: React.FC<LessonPanelProps> = ({
               ) : (
                 <Circle className="w-4 h-4 text-gh-text-subtle shrink-0 mt-0.5" />
               )}
-              <span className={task.isCompleted ? 'line-through text-gh-text-muted' : ''}>
+              <span className={task.isCompleted ? 'text-gh-success-fg font-medium' : ''}>
                 {language === 'bn' ? task.descriptionBn : task.descriptionEn}
               </span>
             </div>
@@ -120,19 +133,24 @@ export const LessonPanel: React.FC<LessonPanelProps> = ({
         </div>
       </div>
 
-      {/* Quick Run Suggested Commands */}
+      {/* Quick Run Suggested Commands with Action description */}
       {currentLesson.quickCommands && currentLesson.quickCommands.length > 0 && (
-        <div className="mb-4">
-          <div className="text-[11px] font-semibold text-gh-text-muted uppercase mb-2 flex items-center space-x-1">
+        <div className="mb-4 bg-gh-canvas-subtle border border-gh-border rounded-lg p-3">
+          <div className="text-[11px] font-semibold text-gh-text-muted uppercase mb-1.5 flex items-center space-x-1">
             <Terminal className="w-3.5 h-3.5 text-gh-accent" />
-            <span>{language === 'bn' ? 'সরাসরি রান করার জন্য ক্লিক করুন:' : 'Click to Quick-Run:'}</span>
+            <span>{language === 'bn' ? 'ক্লিক টু কুইক রান (Click to Quick-Run):' : 'Click to Quick-Run:'}</span>
+          </div>
+          <div className="text-[11px] text-gh-text-muted mb-2">
+            {language === 'bn' 
+              ? 'নিচের কমান্ডে ক্লিক করলে সরাসরি টার্মিনালে এক্সিকিউট হবে এবং কী পরিবর্তন হলো দেখতে পাবেন:' 
+              : 'Click below to instantly execute in terminal and observe the resulting changes:'}
           </div>
           <div className="flex flex-wrap gap-2">
             {currentLesson.quickCommands.map((cmd) => (
               <button
                 key={cmd}
                 onClick={() => onQuickRunCommand(cmd)}
-                className="flex items-center space-x-1.5 bg-gh-canvas-subtle hover:bg-gh-accent/15 border border-gh-border hover:border-gh-accent text-gh-accent px-2.5 py-1.5 rounded-md font-mono text-xs transition"
+                className="flex items-center space-x-1.5 bg-gh-canvas hover:bg-gh-accent/15 border border-gh-border hover:border-gh-accent text-gh-accent px-2.5 py-1.5 rounded-md font-mono text-xs transition shadow-sm"
               >
                 <Play className="w-3 h-3 fill-current" />
                 <span>{cmd}</span>
@@ -173,10 +191,10 @@ export const LessonPanel: React.FC<LessonPanelProps> = ({
         <button
           onClick={onNextLesson}
           disabled={!hasNextLesson}
-          className={`flex items-center space-x-1 px-3.5 py-1.5 rounded-md text-xs font-semibold shadow-sm transition ${
+          className={`flex items-center space-x-1 px-4 py-1.5 rounded-md text-xs font-semibold shadow-sm transition ${
             hasNextLesson
               ? isAllTasksComplete
-                ? 'bg-gh-success text-white hover:bg-gh-success-emphasis'
+                ? 'bg-gh-success text-white hover:bg-gh-success-emphasis animate-bounce'
                 : 'bg-gh-accent text-white hover:bg-gh-accent-emphasis'
               : 'border border-gh-border text-gh-text-subtle cursor-not-allowed opacity-50'
           }`}

@@ -3,6 +3,8 @@ import { Header } from './components/layout/Header';
 import { GitGraph } from './components/visualizer/GitGraph';
 import { LifecycleView } from './components/visualizer/LifecycleView';
 import { ActionsRunner } from './components/visualizer/ActionsRunner';
+import { ConfigCard } from './components/visualizer/ConfigCard';
+import { CommandFeedbackBanner, CommandFeedback } from './components/visualizer/CommandFeedbackBanner';
 import { Terminal } from './components/terminal/Terminal';
 import { LessonPanel } from './components/curriculum/LessonPanel';
 import { ConflictModal } from './components/curriculum/ConflictModal';
@@ -11,8 +13,9 @@ import { CURRICULUM } from './data/curriculum';
 import { PresetScenario } from './data/presets';
 import { VirtualGit } from './engine/VirtualGit';
 import { GitState } from './types/git';
+import { generateFeedback } from './engine/feedbackHelper';
 import { loadStoredProgress, saveStoredProgress } from './config/firebase';
-import { GitCommit, Workflow, Layers, Sparkles } from 'lucide-react';
+import { GitCommit, Workflow, FlaskConical, X, Play } from 'lucide-react';
 
 export const App: React.FC = () => {
   const initialStored = useMemo(() => loadStoredProgress(), []);
@@ -28,6 +31,12 @@ export const App: React.FC = () => {
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>(initialStored.completedLessonIds || []);
   const [mode, setMode] = useState<'challenge' | 'sandbox'>('challenge');
   const [language, setLanguage] = useState<'bn' | 'en'>(initialStored.language || 'bn');
+
+  // Active Practice Lab Scenario
+  const [activeScenario, setActiveScenario] = useState<PresetScenario | null>(null);
+
+  // Command Execution Feedback
+  const [commandFeedback, setCommandFeedback] = useState<CommandFeedback | null>(null);
 
   // UI Tabs & Modals
   const [rightTab, setRightTab] = useState<'graph' | 'actions'>('graph');
@@ -76,7 +85,6 @@ export const App: React.FC = () => {
 
     if (allDone && currentLesson.tasks.length > 0 && !completedLessonIds.includes(currentLesson.id)) {
       setCompletedLessonIds(prev => [...prev, currentLesson.id]);
-      setShowSuccessModal(true);
     }
   }, [currentLesson, gitState, commandHistory, completedLessonIds]);
 
@@ -88,12 +96,14 @@ export const App: React.FC = () => {
   // Terminal command callback
   const handleCommandExecuted = (cmd: string) => {
     setCommandHistory(prev => [...prev, cmd]);
+    setCommandFeedback(generateFeedback(cmd));
     syncGitState();
   };
 
   // Quick run from UI
   const handleQuickRun = (cmd: string) => {
     setQuickCommand(cmd);
+    setCommandFeedback(generateFeedback(cmd));
   };
 
   // Lesson Navigation
@@ -111,7 +121,6 @@ export const App: React.FC = () => {
       setCurrentLevelId(next.levelId);
       setCurrentLessonId(next.lesson.id);
       setShowSuccessModal(false);
-      // Reset tasks completion flags for clean start
       next.lesson.tasks.forEach(t => t.isCompleted = false);
     }
   };
@@ -127,12 +136,22 @@ export const App: React.FC = () => {
   // Reset Repo
   const handleResetRepo = () => {
     git.init();
+    setActiveScenario(null);
+    setCommandFeedback(null);
     syncGitState();
   };
 
-  // Load Preset
+  // Load Preset Lab Scenario
   const handleLoadPreset = (preset: PresetScenario) => {
     git.setState(preset.state);
+    setActiveScenario(preset);
+    setCommandFeedback({
+      command: `[Scenario Loaded] ${preset.nameEn}`,
+      explanationEn: preset.purposeEn,
+      explanationBn: preset.purposeBn,
+      affectedAreaEn: `Lab: ${preset.nameEn}`,
+      affectedAreaBn: `ল্যাব: ${preset.nameBn}`
+    });
     syncGitState();
   };
 
@@ -150,7 +169,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-gh-canvas text-gh-text overflow-hidden font-sans">
-      {/* Top Navigation */}
+      {/* Top Navigation Header */}
       <Header
         currentLevelId={currentLevelId}
         currentLessonId={currentLessonId}
@@ -166,6 +185,47 @@ export const App: React.FC = () => {
         onResetRepo={handleResetRepo}
         onLoadPreset={handleLoadPreset}
         gitState={gitState}
+      />
+
+      {/* Active Lab Scenario Banner */}
+      {activeScenario && (
+        <div className="bg-gh-attention/15 border-b border-gh-attention/30 px-4 py-2.5 flex items-center justify-between text-xs animate-in slide-in-from-top duration-200 z-20">
+          <div className="flex items-center space-x-2.5">
+            <FlaskConical className="w-4 h-4 text-gh-attention-fg shrink-0" />
+            <div>
+              <span className="font-bold text-gh-attention-fg">
+                {language === 'bn' ? `🔬 প্র্যাকটিস ল্যাব সক্রিয়: ${activeScenario.nameBn}` : `🔬 Active Practice Lab: ${activeScenario.nameEn}`}
+              </span>
+              <span className="text-gh-text-muted ml-2 hidden sm:inline">
+                {language === 'bn' ? activeScenario.purposeBn : activeScenario.purposeEn}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleQuickRun(activeScenario.suggestedCommand)}
+              className="flex items-center space-x-1 px-2.5 py-1 rounded bg-gh-attention/20 text-gh-attention-fg hover:bg-gh-attention/30 border border-gh-attention/30 font-mono text-[11px] font-semibold transition"
+            >
+              <Play className="w-2.5 h-2.5 fill-current" />
+              <span>{activeScenario.suggestedCommand}</span>
+            </button>
+            <button
+              onClick={() => setActiveScenario(null)}
+              className="p-1 text-gh-text-muted hover:text-white rounded"
+              title="Exit Lab"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Command Feedback Banner (What Just Happened) */}
+      <CommandFeedbackBanner
+        feedback={commandFeedback}
+        language={language}
+        onDismiss={() => setCommandFeedback(null)}
       />
 
       {/* Main Split View Area */}
@@ -231,10 +291,18 @@ export const App: React.FC = () => {
 
           {/* Tab 1: Animated Commit Graph + Lifecycle */}
           {rightTab === 'graph' ? (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden p-3 overflow-y-auto custom-scrollbar">
+              {/* Show ConfigCard prominently on Level 1 (or when user is learning setup) */}
+              {currentLevelId === 1 && (
+                <ConfigCard gitState={gitState} language={language} />
+              )}
+
+              {/* Animated Commit Graph DAG */}
+              <div className="flex-1 min-h-[280px] bg-gh-canvas rounded-xl border border-gh-border overflow-hidden mb-3">
                 <GitGraph gitState={gitState} />
               </div>
+
+              {/* 3-Tier Working Tree / Staging / Repo Lifecycle */}
               <LifecycleView
                 gitState={gitState}
                 onQuickAdd={(file) => handleQuickRun(`git add ${file}`)}
@@ -257,7 +325,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Success / Level Completion Modal */}
+      {/* Success Modal */}
       {showSuccessModal && (
         <SuccessModal
           lesson={currentLesson}
