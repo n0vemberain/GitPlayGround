@@ -348,6 +348,7 @@ export const App: React.FC = () => {
             {/* Tab 2: Video-like Step-by-Step Animated Explainer */}
             {rightTab === 'animation' && (
               <AnimatedExplainer
+                lessonId={currentLesson.id}
                 currentCommandHint={currentLesson.quickCommands[0] || currentLesson.summaryEn}
                 language={language}
               />
