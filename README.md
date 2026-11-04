@@ -2,6 +2,8 @@
 
 GitPlayGround is an interactive web platform designed to help developers learn and practice Git and GitHub workflows through real-time visual animations and an in-browser simulated terminal.
 
+![GitPlayGround Preview](docs/preview.png)
+
 ## What You Can Do
 
 - Practice Git commands in an interactive simulated terminal with real-time feedback.
