@@ -76,6 +76,8 @@ export interface GitState {
   reflog: ReflogEntry[];
   remotes: Record<string, RemoteRepo>;
   activeConflict: ConflictState | null;
+  config: Record<string, string>;
+  stashStack: { id: string; message: string; files: FileItem[] }[];
   bisectState: {
     active: boolean;
     badCommitId?: string;

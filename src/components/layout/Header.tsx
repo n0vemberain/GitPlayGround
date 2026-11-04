@@ -84,9 +84,10 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {showLevelMenu && (
-            <div className="absolute top-full left-0 mt-1 w-80 bg-gh-canvas-subtle border border-gh-border rounded-lg shadow-2xl p-2 z-50 max-h-96 overflow-y-auto">
-              <div className="text-[11px] font-semibold text-gh-text-muted uppercase px-2 py-1">
-                {language === 'bn' ? '৮-লেভেল রোডম্যাপ' : '8-Level Roadmap'}
+            <div className="absolute top-full left-0 mt-1 w-96 bg-gh-canvas-subtle border border-gh-border rounded-lg shadow-2xl p-2 z-50 max-h-[80vh] overflow-y-auto custom-scrollbar">
+              <div className="text-[11px] font-semibold text-gh-text-muted uppercase px-2 py-1 flex justify-between items-center border-b border-gh-border/50 pb-2 mb-2">
+                <span>{language === 'bn' ? '৮-লেভেল রোডম্যাপ ও ৪০টি কমান্ড' : '8-Level Roadmap (40 Commands)'}</span>
+                <span className="font-mono text-gh-accent text-[10px]">{completedLessonIds.length}/{totalLessons} Done</span>
               </div>
               {CURRICULUM.map(level => {
                 const isSelected = level.id === currentLevelId;
@@ -94,27 +95,56 @@ export const Header: React.FC<HeaderProps> = ({
                 const isFullyDone = levelDoneCount === level.lessons.length;
 
                 return (
-                  <div key={level.id} className="mb-1">
+                  <div key={level.id} className="mb-2 border border-gh-border/50 rounded-lg overflow-hidden bg-gh-canvas/40">
                     <div 
                       onClick={() => {
                         onSelectLevel(level.id, level.lessons[0].id);
-                        setShowLevelMenu(false);
                       }}
-                      className={`flex items-center justify-between p-2 rounded-md cursor-pointer transition text-xs ${
-                        isSelected ? 'bg-gh-accent/15 text-gh-accent font-medium' : 'hover:bg-gh-border/30 text-gh-text'
+                      className={`flex items-center justify-between p-2 cursor-pointer transition text-xs font-semibold ${
+                        isSelected ? 'bg-gh-accent/15 text-gh-accent' : 'hover:bg-gh-border/30 text-gh-text'
                       }`}
                     >
                       <div className="flex items-center space-x-2 truncate">
-                        <span className="font-mono text-xs opacity-75">{level.number}</span>
+                        <span className="font-mono text-[10px] bg-gh-border/60 px-1.5 py-0.5 rounded text-gh-text">Level {level.number}</span>
                         <span className="truncate">{language === 'bn' ? level.titleBn : level.titleEn}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
+                      <div className="flex items-center space-x-1.5 shrink-0">
                         {isFullyDone ? (
-                          <CheckCircle2 className="w-4 h-4 text-gh-success-fg" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-gh-success-fg" />
                         ) : (
                           <span className="text-[10px] text-gh-text-muted font-mono">{levelDoneCount}/{level.lessons.length}</span>
                         )}
                       </div>
+                    </div>
+
+                    {/* Sub-level Lessons List */}
+                    <div className="px-2 py-1 space-y-1 bg-gh-canvas-inset/60 border-t border-gh-border/30">
+                      {level.lessons.map(lesson => {
+                        const isLessonActive = lesson.id === currentLessonId;
+                        const isLessonDone = completedLessonIds.includes(lesson.id);
+
+                        return (
+                          <div
+                            key={lesson.id}
+                            onClick={() => {
+                              onSelectLevel(level.id, lesson.id);
+                              setShowLevelMenu(false);
+                            }}
+                            className={`flex items-center justify-between px-2 py-1 rounded cursor-pointer transition text-[11px] ${
+                              isLessonActive
+                                ? 'bg-gh-accent text-white font-medium'
+                                : 'hover:bg-gh-border/40 text-gh-text-muted hover:text-gh-text'
+                            }`}
+                          >
+                            <span className="truncate font-mono">
+                              {language === 'bn' ? lesson.titleBn : lesson.titleEn}
+                            </span>
+                            {isLessonDone && (
+                              <CheckCircle2 className={`w-3 h-3 shrink-0 ${isLessonActive ? 'text-white' : 'text-gh-success-fg'}`} />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );

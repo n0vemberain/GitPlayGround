@@ -56,6 +56,8 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           branches: { 'main': 'c1' }
         }
       },
+      config: { 'user.name': 'Dev', 'user.email': 'dev@example.com' },
+      stashStack: [],
       activeConflict: null,
       bisectState: null
     }
@@ -82,6 +84,8 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
       stagingArea: [],
       reflog: [],
       remotes: {},
+      config: { 'user.name': 'Dev', 'user.email': 'dev@example.com' },
+      stashStack: [],
       activeConflict: null,
       bisectState: null
     }
@@ -106,6 +110,8 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
       stagingArea: [],
       reflog: [],
       remotes: {},
+      config: { 'user.name': 'Dev', 'user.email': 'dev@example.com' },
+      stashStack: [],
       activeConflict: null,
       bisectState: null
     }
