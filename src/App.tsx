@@ -4,6 +4,7 @@ import { GitGraph } from './components/visualizer/GitGraph';
 import { LifecycleView } from './components/visualizer/LifecycleView';
 import { ActionsRunner } from './components/visualizer/ActionsRunner';
 import { ConfigCard } from './components/visualizer/ConfigCard';
+import { AnimatedExplainer } from './components/visualizer/AnimatedExplainer';
 import { CommandFeedbackBanner, CommandFeedback } from './components/visualizer/CommandFeedbackBanner';
 import { Terminal } from './components/terminal/Terminal';
 import { LessonPanel } from './components/curriculum/LessonPanel';
@@ -15,7 +16,7 @@ import { VirtualGit } from './engine/VirtualGit';
 import { GitState } from './types/git';
 import { generateFeedback } from './engine/feedbackHelper';
 import { loadStoredProgress, saveStoredProgress } from './config/firebase';
-import { GitCommit, Workflow, FlaskConical, X, Play } from 'lucide-react';
+import { GitCommit, Workflow, FlaskConical, X, Play, Film } from 'lucide-react';
 
 export const App: React.FC = () => {
   const initialStored = useMemo(() => loadStoredProgress(), []);
@@ -38,8 +39,8 @@ export const App: React.FC = () => {
   // Command Execution Feedback
   const [commandFeedback, setCommandFeedback] = useState<CommandFeedback | null>(null);
 
-  // UI Tabs & Modals
-  const [rightTab, setRightTab] = useState<'graph' | 'actions'>('graph');
+  // UI Tabs & Modals (3 tabs: graph, animation, actions)
+  const [rightTab, setRightTab] = useState<'graph' | 'animation' | 'actions'>('graph');
   const [quickCommand, setQuickCommand] = useState<string | undefined>(undefined);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
 
@@ -257,7 +258,7 @@ export const App: React.FC = () => {
 
         {/* Right Panel: Animated Visualizer (7 cols) */}
         <div className="col-span-12 lg:col-span-7 flex flex-col overflow-hidden bg-gh-canvas-inset">
-          {/* Visualizer Tab Switcher */}
+          {/* Visualizer Tab Switcher (3 Tabs) */}
           <div className="h-10 bg-gh-canvas border-b border-gh-border px-3 flex items-center justify-between select-none">
             <div className="flex items-center space-x-1">
               <button
@@ -269,8 +270,21 @@ export const App: React.FC = () => {
                 }`}
               >
                 <GitCommit className="w-3.5 h-3.5" />
-                <span>Git Graph & 3-Tier Lifecycle</span>
+                <span>{language === 'bn' ? 'কমিট গ্রাফ ও লাইফসাইকেল' : 'Commit Graph & Lifecycle'}</span>
               </button>
+
+              <button
+                onClick={() => setRightTab('animation')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                  rightTab === 'animation'
+                    ? 'bg-gh-canvas-subtle text-rose-400 border border-gh-border shadow-sm'
+                    : 'text-gh-text-muted hover:text-gh-text'
+                }`}
+              >
+                <Film className="w-3.5 h-3.5 text-rose-400" />
+                <span>{language === 'bn' ? '🎬 লাইভ অ্যানিমেশন প্লেয়ার' : '🎬 Live Animation Player'}</span>
+              </button>
+
               <button
                 onClick={() => setRightTab('actions')}
                 className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
@@ -280,7 +294,7 @@ export const App: React.FC = () => {
                 }`}
               >
                 <Workflow className="w-3.5 h-3.5" />
-                <span>GitHub Actions CI/CD (L8)</span>
+                <span>GitHub Actions (L8)</span>
               </button>
             </div>
 
@@ -289,29 +303,61 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Tab 1: Animated Commit Graph + Lifecycle */}
-          {rightTab === 'graph' ? (
-            <div className="flex-1 flex flex-col overflow-hidden p-3 overflow-y-auto custom-scrollbar">
-              {/* Show ConfigCard prominently on Level 1 (or when user is learning setup) */}
-              {currentLevelId === 1 && (
-                <ConfigCard gitState={gitState} language={language} />
-              )}
+          {/* View Container */}
+          <div className="flex-1 flex flex-col overflow-hidden p-3 overflow-y-auto custom-scrollbar">
+            {/* Tab 1: Live Interactive Commit Graph + 3-Tier Lifecycle */}
+            {rightTab === 'graph' && (
+              <>
+                {/* Visual callout button to jump to animated explainer */}
+                <div className="bg-gh-canvas border border-gh-border/80 rounded-lg p-2.5 mb-3 flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-xs">
+                    <Film className="w-4 h-4 text-rose-400" />
+                    <span className="text-gh-text font-medium">
+                      {language === 'bn' 
+                        ? `এই পাঠের মেকানিজম কীভাবে ব্যাকএন্ডে চলে দেখতে চান?` 
+                        : `Want to watch how this command works under the hood?`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setRightTab('animation')}
+                    className="flex items-center space-x-1 px-3 py-1 rounded bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-semibold transition"
+                  >
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>{language === 'bn' ? 'অ্যানিমেশন দেখুন' : 'Watch Animation'}</span>
+                  </button>
+                </div>
 
-              {/* Animated Commit Graph DAG */}
-              <div className="flex-1 min-h-[280px] bg-gh-canvas rounded-xl border border-gh-border overflow-hidden mb-3">
-                <GitGraph gitState={gitState} />
-              </div>
+                {/* Show ConfigCard prominently on Level 1 */}
+                {currentLevelId === 1 && (
+                  <ConfigCard gitState={gitState} language={language} />
+                )}
 
-              {/* 3-Tier Working Tree / Staging / Repo Lifecycle */}
-              <LifecycleView
-                gitState={gitState}
-                onQuickAdd={(file) => handleQuickRun(`git add ${file}`)}
+                {/* Animated Commit Graph DAG */}
+                <div className="flex-1 min-h-[280px] bg-gh-canvas rounded-xl border border-gh-border overflow-hidden mb-3">
+                  <GitGraph gitState={gitState} />
+                </div>
+
+                {/* 3-Tier Working Tree / Staging / Repo Lifecycle */}
+                <LifecycleView
+                  gitState={gitState}
+                  onQuickAdd={(file) => handleQuickRun(`git add ${file}`)}
+                />
+              </>
+            )}
+
+            {/* Tab 2: Video-like Step-by-Step Animated Explainer */}
+            {rightTab === 'animation' && (
+              <AnimatedExplainer
+                currentCommandHint={currentLesson.quickCommands[0] || currentLesson.summaryEn}
+                language={language}
               />
-            </div>
-          ) : (
-            /* Tab 2: GitHub Actions Runner */
-            <ActionsRunner language={language} />
-          )}
+            )}
+
+            {/* Tab 3: GitHub Actions CI/CD Runner */}
+            {rightTab === 'actions' && (
+              <ActionsRunner language={language} />
+            )}
+          </div>
         </div>
       </div>
 
